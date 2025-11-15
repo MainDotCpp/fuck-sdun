@@ -50,6 +50,20 @@ export interface BrowserSpec {
   name: string;
   /** 浏览器厂商 */
   vendor: string;
+  /** userAgentData (Client Hints API) - 从真机提取的完整数据 */
+  userAgentData?: {
+    platform?: string | null;
+    brands?: Array<{ brand: string; version: string }>;
+    mobile?: boolean | null;
+    platformVersion?: string;
+    model?: string;
+    architecture?: string;
+    bitness?: string;
+    fullVersion?: string;
+    fullVersionList?: Array<{ brand: string; version: string }>;
+    uaFullVersion?: string;
+    wow64?: boolean;
+  };
 }
 
 /**

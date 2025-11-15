@@ -36,6 +36,9 @@ export class AndroidFingerprintStrategy implements FingerprintStrategy {
 (function() {
   'use strict';
   
+  // 在页面加载前立即执行，确保在所有检测代码运行前完成修改
+  // 使用立即执行函数避免污染全局作用域
+  
   // 修改 Navigator 对象
   Object.defineProperty(navigator, 'deviceMemory', {
     get: () => ${fingerprint.deviceMemory},
@@ -52,6 +55,8 @@ export class AndroidFingerprintStrategy implements FingerprintStrategy {
     configurable: true
   });
   
+  // navigator.platform 对于 Android 设备，通常返回 "Linux armv8l" 或类似值
+  // 但检测平台可能会检查这个值，保持与配置一致
   Object.defineProperty(navigator, 'platform', {
     get: () => '${system.platform}',
     configurable: true
@@ -71,6 +76,82 @@ export class AndroidFingerprintStrategy implements FingerprintStrategy {
     get: () => '${browser.vendor}',
     configurable: true
   });
+  
+  // Android Chrome 特有：plugins 和 mimeTypes 应该有内容（与 iOS 不同）
+  // iOS Safari 的 plugins 和 mimeTypes 为空数组，但 Android Chrome 有插件
+  // 创建模拟的 Chrome 插件列表
+  (function() {
+    const chromePlugins = [];
+    
+    // Chrome PDF Plugin
+    const pdfPlugin = {
+      name: 'Chrome PDF Plugin',
+      description: 'Portable Document Format',
+      filename: 'internal-pdf-viewer',
+      length: 1
+    };
+    pdfPlugin['0'] = {
+      type: 'application/pdf',
+      suffixes: 'pdf',
+      description: 'Portable Document Format',
+      enabledPlugin: pdfPlugin
+    };
+    chromePlugins.push(pdfPlugin);
+    
+    // Chrome PDF Viewer
+    const pdfViewer = {
+      name: 'Chrome PDF Viewer',
+      description: '',
+      filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai',
+      length: 1
+    };
+    pdfViewer['0'] = {
+      type: 'application/pdf',
+      suffixes: 'pdf',
+      description: '',
+      enabledPlugin: pdfViewer
+    };
+    chromePlugins.push(pdfViewer);
+    
+    // Native Client
+    const naclPlugin = {
+      name: 'Native Client',
+      description: '',
+      filename: 'internal-nacl-plugin',
+      length: 2
+    };
+    naclPlugin['0'] = {
+      type: 'application/x-nacl',
+      suffixes: '',
+      description: 'Native Client Executable',
+      enabledPlugin: naclPlugin
+    };
+    naclPlugin['1'] = {
+      type: 'application/x-pnacl',
+      suffixes: '',
+      description: 'Portable Native Client Executable',
+      enabledPlugin: naclPlugin
+    };
+    chromePlugins.push(naclPlugin);
+    
+    Object.defineProperty(navigator, 'plugins', {
+      get: () => chromePlugins,
+      configurable: true
+    });
+    
+    // 创建对应的 mimeTypes
+    const chromeMimeTypes = [];
+    chromePlugins.forEach(function(plugin) {
+      for (let i = 0; i < plugin.length; i++) {
+        chromeMimeTypes.push(plugin[i.toString()]);
+      }
+    });
+    
+    Object.defineProperty(navigator, 'mimeTypes', {
+      get: () => chromeMimeTypes,
+      configurable: true
+    });
+  })();
   
   // 修改屏幕属性
   Object.defineProperty(screen, 'width', {
@@ -329,31 +410,78 @@ export class AndroidFingerprintStrategy implements FingerprintStrategy {
   };
   
   // 处理 userAgentData (Client Hints API)
-  if (!navigator.userAgentData) {
-    const chromeVersion = '${browser.version}'.split('.')[0] || '120';
-    Object.defineProperty(navigator, 'userAgentData', {
-      get: () => ({
-        platform: '${system.platform}',
-        brands: [
-          { brand: 'Chromium', version: chromeVersion },
-          { brand: 'Google Chrome', version: chromeVersion },
-          { brand: 'Not;A=Brand', version: '99' }
-        ],
-        mobile: true,
-        getHighEntropyValues: function(hints) {
-          return Promise.resolve({
-            platform: '${system.platform}',
-            platformVersion: '${system.osVersion}',
-            model: '${browser.userAgent.match(/\\(([^)]+)\\)/)?.[1] || 'Android Device'}',
-            mobile: true
-          });
-        }
-      }),
-      configurable: true,
-      enumerable: true
-    });
-  }
-  
+  // 注意：如果通过 CDP 设置了 userAgentMetadata，这里不需要修改
+  // 优先使用配置中的 userAgentData（从真机提取的完整数据）
+  (function() {
+    // 如果 userAgentData 不存在（CDP 设置失败的情况），创建它
+    if (!navigator.userAgentData) {
+      const uaData = ${JSON.stringify(browser.userAgentData || null)};
+      
+      if (uaData && uaData.brands && uaData.brands.length > 0) {
+        // 使用配置中的 userAgentData（从真机提取）
+        const brands = uaData.brands;
+        const platform = uaData.platform || 'Android';
+        const mobile = uaData.mobile !== undefined ? uaData.mobile : true;
+        
+        Object.defineProperty(navigator, 'userAgentData', {
+          get: () => ({
+            platform: platform,
+            brands: brands,
+            mobile: mobile,
+            getHighEntropyValues: function(hints) {
+              return Promise.resolve({
+                platform: platform,
+                platformVersion: uaData.platformVersion || '${system.osVersion}',
+                model: uaData.model || 'Android Device',
+                mobile: mobile,
+                ...(uaData.architecture ? { architecture: uaData.architecture } : {}),
+                ...(uaData.bitness ? { bitness: uaData.bitness } : {}),
+                ...(uaData.fullVersion ? { fullVersion: uaData.fullVersion } : {}),
+                ...(uaData.uaFullVersion ? { uaFullVersion: uaData.uaFullVersion } : {}),
+                ...(uaData.wow64 !== undefined ? { wow64: uaData.wow64 } : {})
+              });
+            }
+          }),
+          configurable: true,
+          enumerable: true
+        });
+      } else {
+        // 如果没有配置，从 User-Agent 中提取（后备方案）
+        const ua = navigator.userAgent || '';
+        const androidVersionMatch = ua.match(/Android\\s+(\\d+)(?:[._](\\d+))?/i);
+        const androidVersion = androidVersionMatch ? androidVersionMatch[1] : '${system.osVersion}';
+        
+        const modelMatch = ua.match(/Android\\s+[\\d._]+;?\\s*([^;()]+?)(?:\\s+Build\\/|\\)|;)/i);
+        const deviceModel = modelMatch && modelMatch[1] ? modelMatch[1].trim() : (ua.match(/\\(([^)]+)\\)/)?.[1] || 'Android Device');
+        
+        // 从 User-Agent 中提取 Chrome 版本
+        const chromeVersionMatch = ua.match(/Chrome\\/(\\d+)(?:\\.(\\d+))?(?:\\.(\\d+))?(?:\\.(\\d+))?/i);
+        const chromeMajorVersion = chromeVersionMatch ? chromeVersionMatch[1] : ('${browser.version}'.split('.')[0] || '120');
+        
+        Object.defineProperty(navigator, 'userAgentData', {
+          get: () => ({
+            platform: 'Android',
+            brands: [
+              { brand: 'Google Chrome', version: chromeMajorVersion },
+              { brand: 'Not?A_Brand', version: '8' },
+              { brand: 'Chromium', version: chromeMajorVersion }
+            ],
+            mobile: true,
+            getHighEntropyValues: function(hints) {
+              return Promise.resolve({
+                platform: 'Android',
+                platformVersion: androidVersion,
+                model: deviceModel,
+                mobile: true
+              });
+            }
+          }),
+          configurable: true,
+          enumerable: true
+        });
+      }
+    }
+  })();
 })();
 `.trim();
   }
