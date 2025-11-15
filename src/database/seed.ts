@@ -79,6 +79,7 @@ async function main() {
           browserVersion: deviceWithoutId.browser.version,
           browserName: deviceWithoutId.browser.name,
           browserVendor: deviceWithoutId.browser.vendor,
+          userAgentData: deviceWithoutId.browser.userAgentData ? JSON.stringify(deviceWithoutId.browser.userAgentData) : null,
           // 指纹参数
           deviceMemory: deviceWithoutId.fingerprint.deviceMemory ?? null,
           hardwareConcurrency: deviceWithoutId.fingerprint.hardwareConcurrency,

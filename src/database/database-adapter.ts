@@ -89,6 +89,19 @@ export class DatabaseAdapter {
    * 构建完整的设备配置对象
    */
   private buildDeviceProfile(device: any): DeviceProfile {
+    // 解析 userAgentData
+    let userAgentData: any = undefined;
+    if (device.userAgentData) {
+      try {
+        userAgentData = JSON.parse(device.userAgentData);
+        console.log('[DatabaseAdapter] Parsed userAgentData:', JSON.stringify(userAgentData, null, 2));
+      } catch (error) {
+        console.warn('[DatabaseAdapter] Failed to parse userAgentData:', error);
+      }
+    } else {
+      console.log('[DatabaseAdapter] No userAgentData in database record');
+    }
+    
     return {
       id: device.id.toString(), // 转换为字符串以保持 API 兼容性
       name: device.name,
@@ -110,6 +123,7 @@ export class DatabaseAdapter {
         version: device.browserVersion,
         name: device.browserName,
         vendor: device.browserVendor,
+        ...(userAgentData ? { userAgentData } : {}),
       },
       fingerprint: {
         deviceMemory: device.deviceMemory ?? undefined,
@@ -150,6 +164,7 @@ export class DatabaseAdapter {
         browserVersion: device.browser.version,
         browserName: device.browser.name,
         browserVendor: device.browser.vendor,
+        userAgentData: device.browser.userAgentData ? JSON.stringify(device.browser.userAgentData) : null,
         // 指纹参数
         deviceMemory: device.fingerprint.deviceMemory ?? null,
         hardwareConcurrency: device.fingerprint.hardwareConcurrency,
@@ -195,6 +210,7 @@ export class DatabaseAdapter {
         browserVersion: device.browser.version,
         browserName: device.browser.name,
         browserVendor: device.browser.vendor,
+        userAgentData: device.browser.userAgentData ? JSON.stringify(device.browser.userAgentData) : null,
         // 指纹参数
         deviceMemory: device.fingerprint.deviceMemory ?? null,
         hardwareConcurrency: device.fingerprint.hardwareConcurrency,

@@ -358,24 +358,63 @@ export class IOSFingerprintStrategy implements FingerprintStrategy {
   });
   
   // 处理 userAgentData (Client Hints API)
+  // 优化：使用 Proxy 隐藏属性描述符，避免被检测脚本发现 configurable: true
   if (!navigator.userAgentData) {
-    Object.defineProperty(navigator, 'userAgentData', {
-      get: () => ({
-        platform: '${system.platform}',
-        brands: [
-          { brand: 'Safari', version: '${browser.version}' }
-        ],
-        mobile: true,
-        getHighEntropyValues: function(hints) {
-          return Promise.resolve({
-            platform: '${system.platform}',
-            platformVersion: '${system.osVersion}',
-            model: 'iPhone',
-            mobile: true
-          });
+    // 优化：使用 Function 构造函数创建 getHighEntropyValues，避免 Promise.resolve 特征
+    const getHighEntropyValuesCode = [
+      'var result = {',
+      '  platform: ' + ${JSON.stringify(system.platform)} + ',',
+      '  platformVersion: ' + ${JSON.stringify(system.osVersion)} + ',',
+      '  model: ' + ${JSON.stringify('iPhone')} + ',',
+      '  mobile: true',
+      '};',
+      'var p = new Promise(function(r) { r(result); });',
+      'return p;'
+    ].join('\\n');
+    
+    const getHighEntropyValuesFn = new Function('hints', getHighEntropyValuesCode);
+    
+    // 优化：修改 getHighEntropyValues 的 toString，使其返回 [native code]
+    Object.defineProperty(getHighEntropyValuesFn, 'toString', {
+      value: function toString() { return 'function getHighEntropyValues() { [native code] }'; },
+      writable: false,
+      configurable: false,
+      enumerable: false
+    });
+    
+    const userAgentDataValue = {
+      platform: '${system.platform}',
+      brands: [
+        { brand: 'Safari', version: '${browser.version}' }
+      ],
+      mobile: true,
+      getHighEntropyValues: getHighEntropyValuesFn
+    };
+    
+    // 优化：拦截 Object.getOwnPropertyDescriptor，隐藏属性描述符的真实值
+    // 必须在定义属性之前设置拦截器
+    const originalGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+    Object.getOwnPropertyDescriptor = function(obj, prop) {
+      if (obj === navigator && prop === 'userAgentData') {
+        // 返回一个假的描述符，显示 configurable: false
+        const realDesc = originalGetOwnPropertyDescriptor.call(Object, obj, prop);
+        if (realDesc) {
+          return {
+            get: realDesc.get,
+            set: realDesc.set,
+            enumerable: realDesc.enumerable,
+            configurable: false,  // 伪装成不可配置
+            writable: false
+          };
         }
-      }),
-      configurable: true,
+      }
+      return originalGetOwnPropertyDescriptor.call(Object, obj, prop);
+    };
+    
+    // 定义 userAgentData 属性
+    Object.defineProperty(navigator, 'userAgentData', {
+      get: () => userAgentDataValue,
+      configurable: true,  // 实际设置为 true（因为 false 会失败）
       enumerable: true
     });
   }

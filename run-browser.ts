@@ -10,7 +10,7 @@ async function main() {
     console.log('模式: 非无头模式（将显示浏览器窗口）');
     
     // 使用设备 ID 1（数据库中的第一个设备，通常是 iPhone）
-    const { browser, page } = await createMobileBrowser('8', {  
+    const { browser, page } = await createMobileBrowser('1', {  
       headless: false,
       launchOptions: {
         headless: false,

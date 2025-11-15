@@ -31,6 +31,7 @@ model Device {
   browserVersion    String   @map("browser_version")
   browserName       String   @map("browser_name")
   browserVendor     String   @map("browser_vendor")
+  userAgentData     String?  @map("user_agent_data") // JSON 格式存储 userAgentData
   
   // 指纹参数
   deviceMemory      Int?     @map("device_memory")
