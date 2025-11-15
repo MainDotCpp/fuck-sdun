@@ -1,0 +1,55 @@
+// Prisma Schema for Device Profiles (Single Table Design)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./devices.db"
+}
+
+model Device {
+  id        Int      @id @default(autoincrement())
+  name      String
+  platform  String   // 'ios' | 'android'
+  
+  // 硬件参数
+  cpuCores          Int
+  memory            Int?
+  screenWidth       Int
+  screenHeight      Int
+  devicePixelRatio  Float
+  colorDepth        Int
+  
+  // 系统参数
+  osVersion         String
+  systemPlatform    String   @map("system_platform")
+  
+  // 浏览器参数
+  userAgent         String   @map("user_agent")
+  browserVersion    String   @map("browser_version")
+  browserName       String   @map("browser_name")
+  browserVendor     String   @map("browser_vendor")
+  
+  // 指纹参数
+  deviceMemory      Int?     @map("device_memory")
+  hardwareConcurrency Int    @map("hardware_concurrency")
+  maxTouchPoints    Int      @map("max_touch_points")
+  webglRenderer     String?  @map("webgl_renderer")
+  webglVendor       String?  @map("webgl_vendor")
+  canvasNoise       Float?   @map("canvas_noise")
+  audioContextSeed  Float?   @map("audio_context_seed")
+  connectionType    String?  @map("connection_type")
+  effectiveType     String?  @map("effective_type")
+  downlink          Int?
+  rtt               Int?
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([name, platform])
+  @@index([platform])
+  @@index([name])
+  @@map("devices")
+}

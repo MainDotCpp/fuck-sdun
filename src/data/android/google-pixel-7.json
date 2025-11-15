@@ -1,0 +1,37 @@
+{
+    "id": "google-pixel-7",
+    "name": "Google Pixel 7",
+    "platform": "android",
+    "hardware": {
+        "cpuCores": 8,
+        "memory": 8,
+        "screenWidth": 412,
+        "screenHeight": 915,
+        "devicePixelRatio": 2.625,
+        "colorDepth": 24
+    },
+    "system": {
+        "osVersion": "14",
+        "platform": "Linux armv8l"
+    },
+    "browser": {
+        "userAgent": "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+        "version": "120.0.0.0",
+        "name": "Chrome",
+        "vendor": "Google Inc."
+    },
+    "fingerprint": {
+        "deviceMemory": 8,
+        "hardwareConcurrency": 8,
+        "maxTouchPoints": 10,
+        "webglRenderer": "Mali-G710",
+        "webglVendor": "ARM",
+        "canvasNoise": 0.456789012,
+        "audioContextSeed": 0.654321098,
+        "connectionType": "wifi",
+        "effectiveType": "4g",
+        "downlink": 15,
+        "rtt": 40
+    }
+}
+

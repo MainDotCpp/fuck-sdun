@@ -1,0 +1,37 @@
+{
+    "id": "samsung-galaxy-s23",
+    "name": "Samsung Galaxy S23",
+    "platform": "android",
+    "hardware": {
+        "cpuCores": 8,
+        "memory": 8,
+        "screenWidth": 390,
+        "screenHeight": 844,
+        "devicePixelRatio": 3,
+        "colorDepth": 24
+    },
+    "system": {
+        "osVersion": "13",
+        "platform": "Linux armv8l"
+    },
+    "browser": {
+        "userAgent": "Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+        "version": "120.0.0.0",
+        "name": "Chrome",
+        "vendor": "Google Inc."
+    },
+    "fingerprint": {
+        "deviceMemory": 8,
+        "hardwareConcurrency": 8,
+        "maxTouchPoints": 10,
+        "webglRenderer": "Adreno (TM) 740",
+        "webglVendor": "Qualcomm",
+        "canvasNoise": 0.345678901,
+        "audioContextSeed": 0.765432109,
+        "connectionType": "wifi",
+        "effectiveType": "4g",
+        "downlink": 12,
+        "rtt": 45
+    }
+}
+

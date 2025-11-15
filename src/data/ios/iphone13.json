@@ -1,0 +1,39 @@
+{
+    "id": "iphone",
+    "name": "iPhone 13",
+    "platform": "ios",
+    "hardware": {
+      "cpuCores": 4,
+      "screenWidth": 393,
+      "screenHeight": 852,
+      "devicePixelRatio": 3,
+      "colorDepth": 24
+    },
+    "system": {
+      "osVersion": "18.7",
+      "timezoneId": "Asia/Shanghai",
+      "language": "zh-CN",
+      "languages": [
+        "zh-CN"
+      ],
+      "platform": "iPhone"
+    },
+    "browser": {
+      "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Mobile/22H20 Safari/604.1",
+      "version": "18.7",
+      "name": "Safari",
+      "vendor": "Apple Computer, Inc."
+    },
+    "fingerprint": {
+      "hardwareConcurrency": 4,
+      "maxTouchPoints": 5,
+      "webglRenderer": "Apple GPU",
+      "webglVendor": "Apple Inc.",
+      "canvasNoise": 0.0489068765,
+      "audioContextSeed": 0.9557180398726286,
+      "connectionType": "unknown",
+      "effectiveType": "unknown",
+      "downlink": null,
+      "rtt": null
+    }
+  }
