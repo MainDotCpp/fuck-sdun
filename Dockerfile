@@ -1,6 +1,6 @@
 # 使用 Playwright 官方推荐的 Ubuntu 基础镜像
 # 这个镜像已经包含了 Playwright 运行所需的所有系统依赖
-FROM mcr.microsoft.com/playwright:v1.56.1-focal
+FROM mcr.microsoft.com/playwright:v1.56.1-noble
 
 # 设置工作目录
 WORKDIR /app
