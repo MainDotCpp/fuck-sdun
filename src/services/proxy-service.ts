@@ -50,11 +50,18 @@ export class ProxyService {
    * 创建默认配置的 ProxyService 实例（日本+随机城市）
    */
   static createDefault(): ProxyService | null {
-    // 检查配置是否完整
+    // 检查配置是否完整（检查是否为默认占位符值）
+    const token = PROXY_CONFIG.token as string;
+    const key = PROXY_CONFIG.key as string;
+    const username = PROXY_CONFIG.username as string;
+    
     if (
-      PROXY_CONFIG.token === 'your_token_here' ||
-      PROXY_CONFIG.key === 'your_key_here' ||
-      PROXY_CONFIG.username === 'your_username_here'
+      token === 'your_token_here' ||
+      key === 'your_key_here' ||
+      username === 'your_username_here' ||
+      !token ||
+      !key ||
+      !username
     ) {
       logger.warn(
         MODULE_NAME,

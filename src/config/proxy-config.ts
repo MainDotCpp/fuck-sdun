@@ -53,7 +53,7 @@ export const PROXY_CONFIG = {
   apiUrl: 'https://docapi.922proxy.com/api/proxy/isp_generate',
   /** 国家（固定为日本） */
   country: 'Japan',
-} as const;
+};
 
 /**
  * 随机选择一个日本城市

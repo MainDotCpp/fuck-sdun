@@ -5,6 +5,9 @@
 
 import { NextResponse } from 'next/server';
 import { browserManager } from '@/src/lib/browser-manager';
+import { logger } from '@/src/utils/logger';
+
+const MODULE_NAME = 'API:Stop';
 
 export async function POST() {
   try {
