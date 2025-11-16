@@ -15,7 +15,7 @@ COPY package.json pnpm-lock.yaml* ./
 RUN pnpm install --frozen-lockfile || pnpm install
 
 # 安装 Playwright 浏览器（Chromium）
-RUN pnpm exec playwright install chromium
+RUN pnpm exec playwright install webkit
 
 # 复制 Prisma schema
 COPY prisma ./prisma
