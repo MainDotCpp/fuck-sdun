@@ -579,12 +579,15 @@ return __turbopack_context__.a(async (__turbopack_handle_async_dependencies__, _
 var __TURBOPACK__imported__module__$5b$externals$5d2f$playwright__$5b$external$5d$__$28$playwright$2c$__esm_import$29$__ = __turbopack_context__.i("[externals]/playwright [external] (playwright, esm_import)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$types$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__ = __turbopack_context__.i("[project]/src/types/index.ts [app-route] (ecmascript) <locals>");
 var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$types$2f$platform$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/types/platform.ts [app-route] (ecmascript)");
+var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/src/utils/logger.ts [app-route] (ecmascript)");
 var __turbopack_async_dependencies__ = __turbopack_handle_async_dependencies__([
     __TURBOPACK__imported__module__$5b$externals$5d2f$playwright__$5b$external$5d$__$28$playwright$2c$__esm_import$29$__
 ]);
 [__TURBOPACK__imported__module__$5b$externals$5d2f$playwright__$5b$external$5d$__$28$playwright$2c$__esm_import$29$__] = __turbopack_async_dependencies__.then ? (await __turbopack_async_dependencies__)() : __turbopack_async_dependencies__;
 ;
 ;
+;
+const MODULE_NAME = 'EngineAdapter';
 class EngineAdapter {
     /**
    * 获取平台对应的浏览器类型
@@ -600,10 +603,37 @@ class EngineAdapter {
         }
     }
     /**
-   * 启动浏览器
+   * 启动浏览器（带反检测配置）
    */ async launchBrowser(platform, options) {
         const browserType = this.getBrowserType(platform);
-        return await browserType.launch(options);
+        // 合并反检测选项
+        const stealthOptions = {
+            ...options,
+            // 反检测：隐藏自动化特征
+            args: [
+                ...options?.args || [],
+                '--disable-blink-features=AutomationControlled',
+                '--disable-dev-shm-usage',
+                '--disable-setuid-sandbox',
+                '--no-sandbox',
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process',
+                '--disable-site-isolation-trials',
+                // 禁用自动化标识
+                '--disable-automation',
+                // 模拟真实浏览器
+                '--disable-infobars',
+                '--disable-notifications',
+                '--disable-popup-blocking',
+                // 禁用密码保存提示
+                '--disable-save-password-bubble',
+                // 使用真实的用户代理
+                '--user-agent=' + (options?.headless === false ? undefined : '')
+            ].filter(Boolean)
+        };
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, `启动浏览器: ${platform}, 引擎: ${(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$types$2f$platform$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getEngineForPlatform"])(platform)}`);
+        const browser = await browserType.launch(stealthOptions);
+        return browser;
     }
 }
 __turbopack_async_result__();
@@ -2102,6 +2132,81 @@ class BrowserManager {
                     Referer: finalReferer
                 });
             }
+            // 应用增强的反检测脚本（针对 Cloudflare）
+            await page.addInitScript(()=>{
+                // 1. 移除 webdriver 标识
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: ()=>undefined
+                });
+                // 2. 覆盖 Chrome 自动化标识
+                if (window.chrome) {
+                    Object.defineProperty(window, 'chrome', {
+                        get: ()=>({
+                                runtime: {}
+                            })
+                    });
+                }
+                // 3. 覆盖 permissions API
+                const originalQuery = window.navigator.permissions.query;
+                window.navigator.permissions.query = (parameters)=>parameters.name === 'notifications' ? Promise.resolve({
+                        state: Notification.permission
+                    }) : originalQuery(parameters);
+                // 4. 覆盖 plugins（避免空数组被检测）
+                if (navigator.plugins.length === 0) {
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: ()=>{
+                            const plugins = [];
+                            for(let i = 0; i < 3; i++){
+                                plugins.push({
+                                    name: `Plugin ${i}`,
+                                    description: 'Plugin description',
+                                    filename: 'plugin.dll'
+                                });
+                            }
+                            return plugins;
+                        }
+                    });
+                }
+                // 5. 覆盖 languages（使用真实值，已在指纹注入中设置）
+                // 这里不再覆盖，使用指纹注入中的值
+                // 6. 移除自动化相关的属性
+                delete window.navigator.__proto__.webdriver;
+                // 7. 覆盖 iframe 检测
+                const originalToString = Function.prototype.toString;
+                Function.prototype.toString = function() {
+                    if (this === navigator.getBattery) {
+                        return 'function getBattery() { [native code] }';
+                    }
+                    return originalToString.call(this);
+                };
+                // 8. 覆盖 toString 方法，隐藏函数修改痕迹
+                const getParameter = WebGLRenderingContext.prototype.getParameter;
+                WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                    if (parameter === 37445) {
+                        return 'Intel Inc.';
+                    }
+                    if (parameter === 37446) {
+                        return 'Intel Iris OpenGL Engine';
+                    }
+                    return getParameter.call(this, parameter);
+                };
+                // 9. 覆盖 console.debug，避免检测脚本发现调试信息
+                const originalDebug = console.debug;
+                console.debug = ()=>{};
+                // 10. 模拟真实的鼠标和键盘事件
+                const originalAddEventListener = EventTarget.prototype.addEventListener;
+                EventTarget.prototype.addEventListener = function(type, listener, options) {
+                    // 如果是检测相关的事件，延迟触发
+                    if (type === 'mousemove' || type === 'keydown') {
+                        setTimeout(()=>{
+                            originalAddEventListener.call(this, type, listener, options);
+                        }, Math.random() * 100);
+                        return;
+                    }
+                    return originalAddEventListener.call(this, type, listener, options);
+                };
+            });
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '已应用增强的反检测脚本（针对 Cloudflare）');
             // 保存会话信息
             this.currentSession = {
                 browser,
@@ -2111,19 +2216,168 @@ class BrowserManager {
                 startedAt: new Date()
             };
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `浏览器已启动: 设备=${deviceName}, 语言=${selectedLanguage}, URL=${actualUrl}${finalReferer ? `, Referer=${finalReferer}` : ''}`);
-            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '开始加载页面，5秒后自动关闭浏览器...');
+            // 监听页面事件以获取更多信息
+            const pageEvents = {
+                loaded: false,
+                responseReceived: false,
+                errors: [],
+                warnings: [],
+                networkRequests: []
+            };
+            // 监听控制台消息
+            page.on('console', (msg)=>{
+                const text = msg.text();
+                if (msg.type() === 'error') {
+                    pageEvents.errors.push(text);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].warn(MODULE_NAME, `页面控制台错误: ${text}`);
+                } else if (msg.type() === 'warning') {
+                    pageEvents.warnings.push(text);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, `页面控制台警告: ${text}`);
+                }
+            });
+            // 监听页面响应
+            page.on('response', (response)=>{
+                const url = response.url();
+                const status = response.status();
+                const method = response.request().method();
+                pageEvents.responseReceived = true;
+                pageEvents.responseStatus = status;
+                pageEvents.networkRequests.push({
+                    url,
+                    method,
+                    status
+                });
+                // 记录主请求的响应
+                if (url === actualUrl || url.includes(new URL(actualUrl).hostname)) {
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `收到页面响应: ${method} ${url} -> ${status}`);
+                }
+            });
+            // 监听页面请求
+            page.on('request', (request)=>{
+                const url = request.url();
+                const method = request.method();
+                pageEvents.networkRequests.push({
+                    url,
+                    method
+                });
+                __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, `页面请求: ${method} ${url}`);
+            });
+            // 监听页面加载完成
+            page.on('load', ()=>{
+                pageEvents.loaded = true;
+                __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '页面 load 事件触发');
+            });
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '开始加载页面，15秒后自动关闭浏览器...');
+            const startTime = Date.now();
             // 开始加载页面（不等待加载完成，使用最新的待访问请求中的网址）
             const gotoPromise = page.goto(actualUrl, {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000
-            }).catch((error)=>{
-                // 即使页面加载失败，也继续执行关闭逻辑
-                __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].warn(MODULE_NAME, '页面加载过程中出现错误（将继续执行关闭逻辑）', error);
+            }).then(async (response)=>{
+                const loadTime = Date.now() - startTime;
+                const finalUrl = page.url();
+                const pageTitle = await page.title().catch(()=>'无法获取标题');
+                pageEvents.finalUrl = finalUrl;
+                pageEvents.pageTitle = pageTitle;
+                pageEvents.loaded = true;
+                __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `页面加载成功: 状态码=${response?.status() || 'N/A'}, 耗时=${loadTime}ms, 最终URL=${finalUrl}, 标题=${pageTitle}`);
+                // 检查是否被重定向
+                if (finalUrl !== actualUrl) {
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `页面发生重定向: ${actualUrl} -> ${finalUrl}`);
+                }
+                return response;
+            }).catch(async (error)=>{
+                const loadTime = Date.now() - startTime;
+                let finalUrl;
+                let pageTitle;
+                try {
+                    finalUrl = page.url();
+                    pageTitle = await page.title();
+                } catch (e) {
+                    finalUrl = '无法获取URL';
+                    pageTitle = '无法获取标题';
+                }
+                pageEvents.finalUrl = finalUrl;
+                pageEvents.pageTitle = pageTitle;
+                __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].error(MODULE_NAME, `页面加载失败: 耗时=${loadTime}ms, 最终URL=${finalUrl}, 标题=${pageTitle}`, error);
+                // 记录详细的错误信息
+                if (error.message) {
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].error(MODULE_NAME, `错误详情: ${error.message}`);
+                }
+                // 即使页面加载失败，也继续执行关闭逻辑（不抛出错误）
+                return null;
             });
-            // 从开始加载算起，5秒后自动关闭浏览器
+            // 等待 Cloudflare 挑战完成（如果存在）
+            // 检查页面是否包含 Cloudflare 挑战
+            const checkCloudflareChallenge = async ()=>{
+                try {
+                    // 等待页面加载
+                    await page.waitForLoadState('domcontentloaded', {
+                        timeout: 5000
+                    }).catch(()=>{});
+                    // 检查是否是 Cloudflare 挑战页面
+                    const isChallenge = await page.evaluate(()=>{
+                        const bodyText = document.body?.innerText || '';
+                        const title = document.title || '';
+                        return bodyText.includes('Checking your browser') || bodyText.includes('Just a moment') || bodyText.includes('DDoS protection by Cloudflare') || title.includes('Just a moment') || document.querySelector('#challenge-form') !== null || document.querySelector('.cf-browser-verification') !== null;
+                    }).catch(()=>false);
+                    if (isChallenge) {
+                        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '检测到 Cloudflare 挑战，等待完成...');
+                        // 等待挑战完成（最多等待 15 秒）
+                        await page.waitForFunction(()=>{
+                            const bodyText = document.body?.innerText || '';
+                            return !(bodyText.includes('Checking your browser') || bodyText.includes('Just a moment') || bodyText.includes('DDoS protection by Cloudflare'));
+                        }, {
+                            timeout: 15000
+                        }).catch(()=>{
+                            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].warn(MODULE_NAME, 'Cloudflare 挑战等待超时，继续执行...');
+                        });
+                        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, 'Cloudflare 挑战已完成或超时');
+                    }
+                } catch (error) {
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, '检查 Cloudflare 挑战时出错', error);
+                }
+            };
+            // 在页面加载后检查 Cloudflare 挑战
+            gotoPromise.then(()=>{
+                checkCloudflareChallenge();
+            }).catch(()=>{
+                // 即使加载失败也尝试检查
+                checkCloudflareChallenge();
+            });
+            // 从开始加载算起，15秒后自动关闭浏览器
             setTimeout(async ()=>{
                 try {
-                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '5秒时间到，自动关闭浏览器...');
+                    const elapsedTime = Date.now() - startTime;
+                    // 汇总页面加载信息
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '='.repeat(60));
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '页面访问摘要:');
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  目标URL: ${actualUrl}`);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  最终URL: ${pageEvents.finalUrl || '未获取到'}`);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  页面标题: ${pageEvents.pageTitle || '未获取到'}`);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  是否收到响应: ${pageEvents.responseReceived ? '是' : '否'}`);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  响应状态码: ${pageEvents.responseStatus || 'N/A'}`);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  是否触发load事件: ${pageEvents.loaded ? '是' : '否'}`);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  网络请求数: ${pageEvents.networkRequests.length}`);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  控制台错误数: ${pageEvents.errors.length}`);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  控制台警告数: ${pageEvents.warnings.length}`);
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `  总耗时: ${elapsedTime}ms`);
+                    // 记录前几个网络请求（最多5个）
+                    if (pageEvents.networkRequests.length > 0) {
+                        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '  主要网络请求:');
+                        pageEvents.networkRequests.slice(0, 5).forEach((req, index)=>{
+                            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `    ${index + 1}. ${req.method} ${req.url} ${req.status ? `-> ${req.status}` : ''}`);
+                        });
+                    }
+                    // 记录控制台错误（如果有）
+                    if (pageEvents.errors.length > 0) {
+                        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].warn(MODULE_NAME, '  控制台错误:');
+                        pageEvents.errors.slice(0, 3).forEach((err, index)=>{
+                            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].warn(MODULE_NAME, `    ${index + 1}. ${err}`);
+                        });
+                    }
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '='.repeat(60));
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '15秒时间到，自动关闭浏览器...');
                     await this.closeBrowser();
                     __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '浏览器已关闭');
                 } catch (error) {
@@ -2131,7 +2385,7 @@ class BrowserManager {
                     // 确保释放锁
                     this.releaseLock();
                 }
-            }, 10000);
+            }, 15000); // 修复：改为 5000 毫秒（5秒）
             // 等待页面加载完成（但不影响关闭逻辑）
             await gotoPromise;
         } catch (error) {

@@ -259,6 +259,97 @@ class BrowserManager {
         });
       }
 
+      // 应用增强的反检测脚本（针对 Cloudflare）
+      await page.addInitScript(() => {
+        // 1. 移除 webdriver 标识
+        Object.defineProperty(navigator, 'webdriver', {
+          get: () => undefined,
+        });
+        
+        // 2. 覆盖 Chrome 自动化标识
+        if ((window as any).chrome) {
+          Object.defineProperty(window, 'chrome', {
+            get: () => ({
+              runtime: {},
+            }),
+          });
+        }
+        
+        // 3. 覆盖 permissions API
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters: any) =>
+          parameters.name === 'notifications'
+            ? Promise.resolve({ state: Notification.permission } as PermissionStatus)
+            : originalQuery(parameters);
+        
+        // 4. 覆盖 plugins（避免空数组被检测）
+        if (navigator.plugins.length === 0) {
+          Object.defineProperty(navigator, 'plugins', {
+            get: () => {
+              const plugins = [];
+              for (let i = 0; i < 3; i++) {
+                plugins.push({
+                  name: `Plugin ${i}`,
+                  description: 'Plugin description',
+                  filename: 'plugin.dll',
+                });
+              }
+              return plugins;
+            },
+          });
+        }
+        
+        // 5. 覆盖 languages（使用真实值，已在指纹注入中设置）
+        // 这里不再覆盖，使用指纹注入中的值
+        
+        // 6. 移除自动化相关的属性
+        delete (window as any).navigator.__proto__.webdriver;
+        
+        // 7. 覆盖 iframe 检测
+        const originalToString = Function.prototype.toString;
+        Function.prototype.toString = function() {
+          if (this === (navigator as any).getBattery) {
+            return 'function getBattery() { [native code] }';
+          }
+          return originalToString.call(this);
+        };
+        
+        // 8. 覆盖 toString 方法，隐藏函数修改痕迹
+        const getParameter = WebGLRenderingContext.prototype.getParameter;
+        WebGLRenderingContext.prototype.getParameter = function(parameter: number) {
+          if (parameter === 37445) {
+            return 'Intel Inc.';
+          }
+          if (parameter === 37446) {
+            return 'Intel Iris OpenGL Engine';
+          }
+          return getParameter.call(this, parameter);
+        };
+        
+        // 9. 覆盖 console.debug，避免检测脚本发现调试信息
+        const originalDebug = console.debug;
+        console.debug = () => {};
+        
+        // 10. 模拟真实的鼠标和键盘事件
+        const originalAddEventListener = EventTarget.prototype.addEventListener;
+        EventTarget.prototype.addEventListener = function(
+          type: string,
+          listener: any,
+          options?: any
+        ) {
+          // 如果是检测相关的事件，延迟触发
+          if (type === 'mousemove' || type === 'keydown') {
+            setTimeout(() => {
+              originalAddEventListener.call(this, type, listener, options);
+            }, Math.random() * 100);
+            return;
+          }
+          return originalAddEventListener.call(this, type, listener, options);
+        };
+      });
+      
+      logger.info(MODULE_NAME, '已应用增强的反检测脚本（针对 Cloudflare）');
+
       // 保存会话信息
       this.currentSession = {
         browser,
@@ -393,7 +484,59 @@ class BrowserManager {
           return null;
         });
 
-      // 从开始加载算起，5秒后自动关闭浏览器
+      // 等待 Cloudflare 挑战完成（如果存在）
+      // 检查页面是否包含 Cloudflare 挑战
+      const checkCloudflareChallenge = async () => {
+        try {
+          // 等待页面加载
+          await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+          
+          // 检查是否是 Cloudflare 挑战页面
+          const isChallenge = await page.evaluate(() => {
+            const bodyText = document.body?.innerText || '';
+            const title = document.title || '';
+            return (
+              bodyText.includes('Checking your browser') ||
+              bodyText.includes('Just a moment') ||
+              bodyText.includes('DDoS protection by Cloudflare') ||
+              title.includes('Just a moment') ||
+              document.querySelector('#challenge-form') !== null ||
+              document.querySelector('.cf-browser-verification') !== null
+            );
+          }).catch(() => false);
+
+          if (isChallenge) {
+            logger.info(MODULE_NAME, '检测到 Cloudflare 挑战，等待完成...');
+            // 等待挑战完成（最多等待 15 秒）
+            await page.waitForFunction(
+              () => {
+                const bodyText = document.body?.innerText || '';
+                return !(
+                  bodyText.includes('Checking your browser') ||
+                  bodyText.includes('Just a moment') ||
+                  bodyText.includes('DDoS protection by Cloudflare')
+                );
+              },
+              { timeout: 15000 }
+            ).catch(() => {
+              logger.warn(MODULE_NAME, 'Cloudflare 挑战等待超时，继续执行...');
+            });
+            logger.info(MODULE_NAME, 'Cloudflare 挑战已完成或超时');
+          }
+        } catch (error) {
+          logger.debug(MODULE_NAME, '检查 Cloudflare 挑战时出错', error);
+        }
+      };
+
+      // 在页面加载后检查 Cloudflare 挑战
+      gotoPromise.then(() => {
+        checkCloudflareChallenge();
+      }).catch(() => {
+        // 即使加载失败也尝试检查
+        checkCloudflareChallenge();
+      });
+
+      // 从开始加载算起，15秒后自动关闭浏览器
       setTimeout(async () => {
         try {
           const elapsedTime = Date.now() - startTime;
