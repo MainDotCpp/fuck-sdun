@@ -13,6 +13,3 @@ logs/
 .docker/
 docker-compose.override.yml
 
-/prisma/devices.db
-/prisma/devices.db-journal
-/prisma/migrations
