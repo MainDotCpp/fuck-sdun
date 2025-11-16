@@ -18,7 +18,9 @@
     "pm2:logs": "pm2 logs fuck-sdun",
     "pm2:status": "pm2 status",
     "start:prod": "bash scripts/start.sh",
-    "setup": "pnpm install && pnpm prisma generate && pnpm next:build"
+    "setup": "pnpm install && pnpm prisma generate && pnpm next:build",
+    "playwright:install": "playwright install chromium",
+    "playwright:install-deps": "playwright install-deps chromium"
   },
   "keywords": [
     "playwright",

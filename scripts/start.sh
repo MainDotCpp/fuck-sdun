@@ -19,6 +19,15 @@ echo "📁 项目目录: $PROJECT_DIR"
 echo "📦 安装依赖..."
 pnpm install
 
+# 1.5. 安装 Playwright 浏览器（如果未安装）
+echo "🌐 检查 Playwright 浏览器..."
+if ! pnpm exec playwright --version &> /dev/null || [ ! -d "node_modules/.playwright" ]; then
+  echo "安装 Playwright 浏览器..."
+  pnpm exec playwright install chromium
+else
+  echo "Playwright 浏览器已安装"
+fi
+
 # 2. 生成 Prisma Client
 echo "🔧 生成 Prisma Client..."
 pnpm prisma generate
