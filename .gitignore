@@ -5,9 +5,6 @@ dist/
 .DS_Store
 *.tsbuildinfo
 .cache/
-prisma/devices.db
-prisma/devices.db-journal
-prisma/migrations/
 .next/
 components.json
 logs/
