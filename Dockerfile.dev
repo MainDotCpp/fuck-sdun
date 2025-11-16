@@ -1,0 +1,43 @@
+# 开发环境 Dockerfile（包含 PM2）
+FROM mcr.microsoft.com/playwright:v1.40.0-focal
+
+WORKDIR /app
+
+# 安装 pnpm 和 PM2
+RUN npm install -g pnpm pm2
+
+# 复制 package.json
+COPY package.json pnpm-lock.yaml* ./
+
+# 安装依赖
+RUN pnpm install --frozen-lockfile || pnpm install
+
+# 安装 Playwright 浏览器
+RUN pnpm exec playwright install chromium
+
+# 复制 Prisma schema
+COPY prisma ./prisma
+
+# 生成 Prisma Client
+RUN pnpm prisma generate
+
+# 复制项目文件
+COPY . .
+
+# 构建 Next.js 应用
+RUN pnpm next:build
+
+# 暴露端口
+EXPOSE 9292
+
+# 设置环境变量
+ENV NODE_ENV=production
+ENV PORT=9292
+ENV LOG_LEVEL=info
+
+# 使用 PM2 启动（如果需要）
+# CMD ["pm2-runtime", "start", "ecosystem.config.cjs"]
+
+# 或直接使用 Next.js
+CMD ["pnpm", "next:start"]
+

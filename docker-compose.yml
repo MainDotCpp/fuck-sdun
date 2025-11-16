@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fuck-sdun
+    ports:
+      - "9292:9292"
+    environment:
+      - NODE_ENV=production
+      - PORT=9292
+      - LOG_LEVEL=info
+    volumes:
+      # 持久化数据库文件
+      - ./prisma/devices.db:/app/prisma/devices.db
+      # 可选：挂载日志目录
+      - ./logs:/app/logs
+    restart: unless-stopped
+    # 资源限制（可选）
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+

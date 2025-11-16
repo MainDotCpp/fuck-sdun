@@ -1,0 +1,56 @@
+# 依赖
+node_modules
+.pnpm-store
+
+# 构建输出
+dist
+.next
+out
+
+# 数据库
+prisma/*.db
+prisma/*.db-journal
+prisma/migrations
+
+# 日志
+logs
+*.log
+
+# 环境变量
+.env
+.env.local
+.env.production
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 文档和工具
+docs
+tools
+*.md
+!README.md
+
+# PM2
+ecosystem.config.cjs
+pm2.config.js
+
+# 测试
+tests
+*.test.ts
+*.test.js
+
+# 其他
+*.tsbuildinfo
+.cache
+

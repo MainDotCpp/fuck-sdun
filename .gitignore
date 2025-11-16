@@ -9,3 +9,6 @@ dist/
 components.json
 logs/
 *.log
+# Docker
+.docker/
+docker-compose.override.yml
