@@ -251,13 +251,61 @@ class BrowserManager {
       // 创建浏览器
       const { browser, page } = await createMobileBrowser(deviceId, browserOptions);
 
-      // 设置 Referer（如果提供，优先使用最新的待访问请求中的 Referer）
+      // 获取设备配置以构建真实的请求头
+      const device = await this.db.getDeviceById(parseInt(deviceId));
+      if (!device) {
+        throw new Error(`设备 ${deviceId} 不存在`);
+      }
+
+      // 构建真实的 HTTP 请求头（模拟真实移动浏览器）
+      const headers: Record<string, string> = {
+        // 基础请求头
+        'Accept': device.platform === 'ios' 
+          ? 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+          : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': selectedLanguage + ',' + languages.join(',') + ';q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'max-age=0',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Upgrade-Insecure-Requests': '1',
+      };
+
+      // 添加 Referer（如果提供）
       const finalReferer = actualReferer || referer;
       if (finalReferer && finalReferer.trim() !== '') {
-        await page.setExtraHTTPHeaders({
-          Referer: finalReferer,
-        });
+        headers['Referer'] = finalReferer;
+        headers['Sec-Fetch-Site'] = 'cross-site';
       }
+
+      // iOS Safari 特定的请求头
+      if (device.platform === 'ios') {
+        headers['Sec-CH-UA'] = `"Not_A Brand";v="8", "Chromium";v="120", "Safari";v="16"`;
+        headers['Sec-CH-UA-Mobile'] = '?1';
+        headers['Sec-CH-UA-Platform'] = '"iOS"';
+      } else {
+        // Android Chrome 特定的请求头
+        headers['Sec-CH-UA'] = `"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"`;
+        headers['Sec-CH-UA-Mobile'] = '?1';
+        headers['Sec-CH-UA-Platform'] = '"Android"';
+      }
+
+      // 设置请求头
+      await page.setExtraHTTPHeaders(headers);
+      
+      logger.info(MODULE_NAME, `已设置 HTTP 请求头: ${Object.keys(headers).join(', ')}`);
+      logger.debug(MODULE_NAME, `请求头详情: ${JSON.stringify(headers, null, 2)}`);
+
+      // 监听所有请求，记录请求头（用于调试代理检测问题）
+      page.on('request', (request) => {
+        const url = request.url();
+        if (url === actualUrl || url.includes(new URL(actualUrl).hostname)) {
+          const requestHeaders = request.headers();
+          logger.debug(MODULE_NAME, `实际发送的请求头: ${JSON.stringify(requestHeaders, null, 2)}`);
+        }
+      });
 
       // 应用增强的反检测脚本（针对 Cloudflare）
       await page.addInitScript(() => {
