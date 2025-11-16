@@ -13,7 +13,7 @@ async function main() {
     const proxy = 'sg.922s5.net:6300:30356354yT-zone-custom-region-JP-sessid-KFKFOZZc:OgUvBWs3';
     
     // 语言轮询列表
-    const languageRotation = ['ja', 'ja-JP'];
+    const languageRotation = ['ja-JP', 'ja'];
     
     // 使用设备 ID 1（数据库中的第一个设备，通常是 iPhone）
     const { browser, page } = await createMobileBrowser('1', {  

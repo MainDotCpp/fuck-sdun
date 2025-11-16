@@ -28,7 +28,7 @@ pnpm next:start
 ### 核心功能
 
 1. **设备随机选择**: 从数据库随机选择一个设备配置
-2. **语言随机选择**: 从语言列表（`ja`, `ja-JP`）中随机选择
+2. **语言随机选择**: 从语言列表（`ja-JP`, `ja`）中随机选择
 3. **代理支持**: 支持配置代理（格式：`host:port:username:password`）
 4. **Referer 设置**: 可以自定义 Referer 头
 5. **锁机制**: 保证同时只有一个浏览器实例运行
@@ -44,7 +44,7 @@ pnpm next:start
   "url": "https://example.com",
   "referer": "https://referer.example.com",
   "proxy": "host:port:username:password", // 可选
-  "languageRotation": ["ja", "ja-JP"] // 可选
+  "languageRotation": ["ja-JP", "ja"] // 可选
 }
 ```
 

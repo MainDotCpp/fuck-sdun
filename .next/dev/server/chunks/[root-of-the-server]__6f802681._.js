@@ -606,12 +606,12 @@ class EngineAdapter {
    * 启动浏览器（带反检测配置）
    */ async launchBrowser(platform, options) {
         const browserType = this.getBrowserType(platform);
-        // 合并反检测选项
-        const stealthOptions = {
-            ...options,
-            // 反检测：隐藏自动化特征
-            args: [
-                ...options?.args || [],
+        const engine = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$types$2f$platform$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getEngineForPlatform"])(platform);
+        // 根据浏览器引擎选择不同的启动参数
+        let stealthArgs = [];
+        if (engine === 'chromium') {
+            // Chromium/Chrome 特定的反检测参数
+            stealthArgs = [
                 '--disable-blink-features=AutomationControlled',
                 '--disable-dev-shm-usage',
                 '--disable-setuid-sandbox',
@@ -626,12 +626,24 @@ class EngineAdapter {
                 '--disable-notifications',
                 '--disable-popup-blocking',
                 // 禁用密码保存提示
-                '--disable-save-password-bubble',
-                // 使用真实的用户代理
-                '--user-agent=' + (options?.headless === false ? undefined : '')
-            ].filter(Boolean)
+                '--disable-save-password-bubble'
+            ];
+        } else if (engine === 'webkit') {
+            // WebKit/Safari 不支持大部分 Chrome 启动参数
+            // WebKit 的反检测主要通过 JavaScript 注入实现（在 browser-manager.ts 中）
+            // 不添加任何启动参数，避免参数解析错误
+            stealthArgs = [];
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, 'WebKit 引擎：不使用启动参数，反检测通过 JavaScript 注入实现');
+        }
+        // 合并反检测选项
+        const stealthOptions = {
+            ...options,
+            args: [
+                ...options?.args || [],
+                ...stealthArgs
+            ]
         };
-        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, `启动浏览器: ${platform}, 引擎: ${(0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$types$2f$platform$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getEngineForPlatform"])(platform)}`);
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, `启动浏览器: ${platform}, 引擎: ${engine}, 参数数量: ${stealthArgs.length}`);
         const browser = await browserType.launch(stealthOptions);
         return browser;
     }
@@ -1676,8 +1688,10 @@ async function createMobileBrowser(deviceId, options) {
     const launchOptions = options?.launchOptions ? {
         ...options.launchOptions
     } : {};
+    // 优先使用 launchOptions 中的 headless，否则使用 options.headless，最后 fallback 到 false
+    const headlessValue = launchOptions.headless !== undefined ? launchOptions.headless : options?.headless ?? false;
     const browser = await engineAdapter.launchBrowser(device.platform, {
-        headless: options?.headless ?? false,
+        headless: headlessValue,
         ...launchOptions
     });
     try {
@@ -2108,45 +2122,125 @@ class BrowserManager {
             }
             // 随机选择设备
             const { id: deviceId, name: deviceName } = await this.getRandomDevice();
+            // 获取设备平台以确定浏览器引擎
+            const device = await this.db.getDeviceById(parseInt(deviceId));
+            if (!device) {
+                throw new Error(`设备 ${deviceId} 不存在`);
+            }
+            const platform = device.platform;
+            const isWebKit = platform === 'ios'; // iOS 使用 WebKit，Android 使用 Chromium
             // 准备语言轮询列表（使用最新的待访问请求中的语言轮询列表）
             const languages = actualLanguageRotation || languageRotation || [
-                'ja',
-                'ja-JP'
+                'ja-JP',
+                'ja'
             ];
             const selectedLanguage = this.getRandomLanguage(languages);
             // 配置浏览器选项
+            // WebKit (iOS) 不支持 'new' headless 模式，只能使用 true/false
+            // Chromium (Android) 支持 'new' headless 模式，更难被检测
+            const headlessMode = isWebKit ? false : 'new'; // WebKit 使用 true，Chromium 使用 'new'
             const browserOptions = {
-                headless: true,
+                headless: headlessMode,
                 launchOptions: {
-                    headless: true
+                    headless: headlessMode
                 },
                 languageRotation: languages,
                 proxy: proxyString
             };
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `浏览器引擎: ${isWebKit ? 'WebKit (iOS)' : 'Chromium (Android)'}, Headless 模式: ${headlessMode}`);
+            // 记录环境信息（用于对比本地和服务器差异）
+            const envInfo = {
+                nodeEnv: ("TURBOPACK compile-time value", "development") || 'development',
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                locale: Intl.DateTimeFormat().resolvedOptions().locale,
+                platform: process.platform,
+                arch: process.arch,
+                proxy: proxyString ? `${proxyString.split(':')[0]}:${proxyString.split(':')[1]}` : 'none'
+            };
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `环境信息: ${JSON.stringify(envInfo, null, 2)}`);
             // 创建浏览器
             const { browser, page } = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createMobileBrowser"])(deviceId, browserOptions);
-            // 设置 Referer（如果提供，优先使用最新的待访问请求中的 Referer）
+            // device 已在上面获取，这里直接使用
+            // 构建真实的 HTTP 请求头（模拟真实移动浏览器）
+            const headers = {
+                // 基础请求头
+                'Accept': device.platform === 'ios' ? 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': selectedLanguage + ',' + languages.join(',') + ';q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Cache-Control': 'max-age=0',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1'
+            };
+            // 添加 Referer（如果提供）
             const finalReferer = actualReferer || referer;
             if (finalReferer && finalReferer.trim() !== '') {
-                await page.setExtraHTTPHeaders({
-                    Referer: finalReferer
-                });
+                headers['Referer'] = finalReferer;
+                headers['Sec-Fetch-Site'] = 'cross-site';
             }
-            // 应用增强的反检测脚本（针对 Cloudflare）
+            // iOS Safari 特定的请求头
+            if (device.platform === 'ios') {
+                // iOS Safari 不使用 Sec-CH-UA（这是 Chrome 的特性）
+                // 但为了兼容性，可以添加
+                headers['Sec-CH-UA-Mobile'] = '?1';
+                headers['Sec-CH-UA-Platform'] = '"iOS"';
+                // iOS Safari 不使用 Sec-CH-UA，移除它以避免被检测
+                delete headers['Sec-CH-UA'];
+            } else {
+                // Android Chrome 特定的请求头
+                headers['Sec-CH-UA'] = `"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"`;
+                headers['Sec-CH-UA-Mobile'] = '?1';
+                headers['Sec-CH-UA-Platform'] = '"Android"';
+            }
+            // 设置请求头
+            await page.setExtraHTTPHeaders(headers);
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `已设置 HTTP 请求头: ${Object.keys(headers).join(', ')}`);
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, `请求头详情: ${JSON.stringify(headers, null, 2)}`);
+            // 监听所有请求，记录请求头（用于调试代理检测问题）
+            page.on('request', (request)=>{
+                const url = request.url();
+                if (url === actualUrl || url.includes(new URL(actualUrl).hostname)) {
+                    const requestHeaders = request.headers();
+                    __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, `实际发送的请求头: ${JSON.stringify(requestHeaders, null, 2)}`);
+                }
+            });
+            // 应用增强的反检测脚本（针对 Cloudflare，特别是 headless 检测）
+            // WebKit (iOS Safari) 和 Chromium (Android Chrome) 都需要这些检测绕过
             await page.addInitScript(()=>{
-                // 1. 移除 webdriver 标识
+                // 1. 移除 webdriver 标识（关键：headless 检测的核心）
+                // WebKit 和 Chromium 都需要移除这个标识
                 Object.defineProperty(navigator, 'webdriver', {
-                    get: ()=>undefined
+                    get: ()=>undefined,
+                    configurable: true
                 });
-                // 2. 覆盖 Chrome 自动化标识
+                // 2. 覆盖 Chrome 自动化标识（仅 Chromium 需要，WebKit 没有 chrome 对象）
+                // 但为了兼容性，检查是否存在再覆盖
                 if (window.chrome) {
                     Object.defineProperty(window, 'chrome', {
                         get: ()=>({
-                                runtime: {}
-                            })
+                                runtime: {},
+                                loadTimes: function() {},
+                                csi: function() {},
+                                app: {}
+                            }),
+                        configurable: true
                     });
                 }
-                // 3. 覆盖 permissions API
+                // 2b. WebKit (Safari) 特定的检测绕过
+                // Safari 没有 chrome 对象，但可能有其他自动化标识
+                if (!window.chrome && navigator.vendor && navigator.vendor.includes('Apple')) {
+                    // Safari 特定的检测绕过
+                    // 确保 navigator.standalone 存在（iOS Safari 特有）
+                    if (typeof navigator.standalone === 'undefined') {
+                        Object.defineProperty(navigator, 'standalone', {
+                            get: ()=>false,
+                            configurable: true
+                        });
+                    }
+                }
+                // 3. 覆盖 permissions API（headless 模式下可能不同）
                 const originalQuery = window.navigator.permissions.query;
                 window.navigator.permissions.query = (parameters)=>parameters.name === 'notifications' ? Promise.resolve({
                         state: Notification.permission
@@ -2164,13 +2258,17 @@ class BrowserManager {
                                 });
                             }
                             return plugins;
-                        }
+                        },
+                        configurable: true
                     });
                 }
                 // 5. 覆盖 languages（使用真实值，已在指纹注入中设置）
                 // 这里不再覆盖，使用指纹注入中的值
                 // 6. 移除自动化相关的属性
                 delete window.navigator.__proto__.webdriver;
+                delete window.__playwright;
+                delete window.__pw_manual;
+                delete window.__playwright_evaluation__;
                 // 7. 覆盖 iframe 检测
                 const originalToString = Function.prototype.toString;
                 Function.prototype.toString = function() {
@@ -2205,6 +2303,57 @@ class BrowserManager {
                     }
                     return originalAddEventListener.call(this, type, listener, options);
                 };
+                // 11. 【新增】模拟截图能力（绕过 Cloudflare 的截图检测）
+                // Cloudflare 会检测浏览器是否支持截图，headless 模式下可能不支持
+                // 通过覆盖相关 API 来模拟支持截图
+                if (typeof window.chrome !== 'undefined' && window.chrome.runtime) {
+                    // 确保 chrome.runtime 存在，表明浏览器支持扩展（间接表明支持截图）
+                    Object.defineProperty(window.chrome, 'runtime', {
+                        get: ()=>({
+                                onConnect: undefined,
+                                onMessage: undefined
+                            }),
+                        configurable: true
+                    });
+                }
+                // 12. 【新增】覆盖 document.documentElement 的某些属性（headless 检测）
+                // 某些检测脚本会检查 document.documentElement 的属性
+                const originalGetAttribute = Element.prototype.getAttribute;
+                Element.prototype.getAttribute = function(name) {
+                    // 如果检测脚本尝试获取某些特殊属性，返回正常值
+                    return originalGetAttribute.call(this, name);
+                };
+                // 13. 【新增】覆盖 window.outerHeight 和 window.outerWidth（headless 检测）
+                // headless 模式下这些值可能为 0
+                if (window.outerHeight === 0 || window.outerWidth === 0) {
+                    Object.defineProperty(window, 'outerHeight', {
+                        get: ()=>window.innerHeight || 844,
+                        configurable: true
+                    });
+                    Object.defineProperty(window, 'outerWidth', {
+                        get: ()=>window.innerWidth || 390,
+                        configurable: true
+                    });
+                }
+                // 14. 【新增】覆盖 Notification API（headless 检测）
+                // 某些检测脚本会检查 Notification 权限
+                if (Notification.permission === 'denied') {
+                    Object.defineProperty(Notification, 'permission', {
+                        get: ()=>'default',
+                        configurable: true
+                    });
+                }
+                // 15. 【新增】移除 CDP 相关标识
+                // Chrome DevTools Protocol 标识可能暴露自动化
+                Object.keys(window).forEach((key)=>{
+                    if (key.toLowerCase().includes('cdp') || key.toLowerCase().includes('devtools') || key.toLowerCase().includes('__playwright') || key.toLowerCase().includes('__pw')) {
+                        try {
+                            delete window[key];
+                        } catch (e) {
+                        // 忽略无法删除的属性
+                        }
+                    }
+                });
             });
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '已应用增强的反检测脚本（针对 Cloudflare）');
             // 保存会话信息
@@ -2270,9 +2419,11 @@ class BrowserManager {
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '开始加载页面，15秒后自动关闭浏览器...');
             const startTime = Date.now();
             // 开始加载页面（不等待加载完成，使用最新的待访问请求中的网址）
+            // 对于 Cloudflare 保护的网站，需要等待更长时间以完成挑战
+            // 增加超时时间以应对 Cloudflare 挑战
             const gotoPromise = page.goto(actualUrl, {
                 waitUntil: 'domcontentloaded',
-                timeout: 30000
+                timeout: 60000
             }).then(async (response)=>{
                 const loadTime = Date.now() - startTime;
                 const finalUrl = page.url();

@@ -37,7 +37,7 @@ export default function BrowserControl() {
         body: JSON.stringify({
           url: url.trim(),
           referer: referer.trim(),
-          languageRotation: ['ja', 'ja-JP'],
+          languageRotation: ['ja-JP', 'ja','ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7'],
         }),
       });
 

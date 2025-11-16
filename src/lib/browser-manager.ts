@@ -243,7 +243,7 @@ class BrowserManager {
       const isWebKit = platform === 'ios'; // iOS 使用 WebKit，Android 使用 Chromium
 
       // 准备语言轮询列表（使用最新的待访问请求中的语言轮询列表）
-      const languages = actualLanguageRotation || languageRotation || ['ja', 'ja-JP'];
+      const languages = actualLanguageRotation || languageRotation || ['ja-JP', 'ja'];
       const selectedLanguage = this.getRandomLanguage(languages);
 
       // 配置浏览器选项
@@ -277,8 +277,6 @@ class BrowserManager {
 
       // device 已在上面获取，这里直接使用
 
-      // 检测实际出口 IP（用于验证代理是否生效）
-      try {
       // 构建真实的 HTTP 请求头（模拟真实移动浏览器）
       const headers: Record<string, string> = {
         // 基础请求头
