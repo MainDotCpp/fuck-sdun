@@ -24,7 +24,7 @@
 pnpm next:dev
 ```
 
-访问 http://localhost:3000
+访问 http://localhost:9292
 
 ## 组件使用示例
 

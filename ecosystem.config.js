@@ -14,7 +14,7 @@ module.exports = {
       exec_mode: 'fork', // 使用 fork 模式（单实例）
       env: {
         NODE_ENV: 'production',
-        PORT: 3000,
+        PORT: 9292,
         LOG_LEVEL: 'info',
       },
       // 日志配置

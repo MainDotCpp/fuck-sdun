@@ -32,7 +32,7 @@ pnpm next:build
 - **启动脚本**: `next start`
 - **实例数**: 1（单实例，因为 Playwright 需要单实例运行）
 - **运行模式**: `fork`（单进程模式）
-- **端口**: 3000（可通过环境变量修改）
+- **端口**: 9292（可通过环境变量修改）
 - **日志**: 输出到 `./logs/` 目录
 - **自动重启**: 启用
 - **内存限制**: 1GB（超过后自动重启）
@@ -44,7 +44,7 @@ pnpm next:build
 ```bash
 # .env 文件
 NODE_ENV=production
-PORT=3000
+PORT=9292
 LOG_LEVEL=info
 ```
 
@@ -129,7 +129,7 @@ pm2 startup
 
 ### 3. 端口配置
 
-- 默认端口：3000
+- 默认端口：9292
 - 可通过环境变量 `PORT` 修改
 - 确保防火墙开放相应端口
 
@@ -171,7 +171,7 @@ pm2 show fuck-sdun
 
 ### 1. 应用无法启动
 
-- 检查端口是否被占用：`lsof -i :3000`
+- 检查端口是否被占用：`lsof -i :9292`
 - 查看错误日志：`pm2 logs fuck-sdun --err`
 - 检查环境变量配置
 
@@ -203,7 +203,7 @@ server {
     server_name your-domain.com;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:9292;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
