@@ -8,3 +8,7 @@ dist/
 prisma/devices.db
 prisma/devices.db-journal
 prisma/migrations/
+.next/
+components.json
+logs/
+*.log
