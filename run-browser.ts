@@ -9,13 +9,24 @@ async function main() {
     console.log('正在启动移动浏览器...');
     console.log('模式: 非无头模式（将显示浏览器窗口）');
     
+    // 代理配置
+    const proxy = 'sg.922s5.net:6300:30356354yT-zone-custom-region-JP-sessid-KFKFOZZc:OgUvBWs3';
+    
+    // 语言轮询列表
+    const languageRotation = ['ja', 'ja-JP'];
+    
     // 使用设备 ID 1（数据库中的第一个设备，通常是 iPhone）
     const { browser, page } = await createMobileBrowser('1', {  
       headless: false,
       launchOptions: {
         headless: false,
       },
+      proxy: proxy,
+      languageRotation: languageRotation,
     });
+    
+    console.log('代理配置:', proxy);
+    console.log('语言轮询列表:', languageRotation);
 
     console.log('浏览器已启动');
     console.log('浏览器类型:', browser.browserType().name());
