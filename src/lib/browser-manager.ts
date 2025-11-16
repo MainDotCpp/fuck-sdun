@@ -248,6 +248,17 @@ class BrowserManager {
         proxy: proxyString, // 使用代理（固定代理或从 API 获取）
       };
 
+      // 记录环境信息（用于对比本地和服务器差异）
+      const envInfo = {
+        nodeEnv: process.env.NODE_ENV || 'development',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        locale: Intl.DateTimeFormat().resolvedOptions().locale,
+        platform: process.platform,
+        arch: process.arch,
+        proxy: proxyString ? `${proxyString.split(':')[0]}:${proxyString.split(':')[1]}` : 'none',
+      };
+      logger.info(MODULE_NAME, `环境信息: ${JSON.stringify(envInfo, null, 2)}`);
+
       // 创建浏览器
       const { browser, page } = await createMobileBrowser(deviceId, browserOptions);
 
@@ -255,6 +266,37 @@ class BrowserManager {
       const device = await this.db.getDeviceById(parseInt(deviceId));
       if (!device) {
         throw new Error(`设备 ${deviceId} 不存在`);
+      }
+
+      // 检测实际出口 IP（用于验证代理是否生效）
+      try {
+        const ipCheckResponse = await page.goto('https://api.ipify.org?format=json', {
+          waitUntil: 'networkidle',
+          timeout: 10000,
+        }).catch(() => null);
+        
+        if (ipCheckResponse) {
+          const ipInfo = await page.evaluate(() => {
+            return document.body.textContent;
+          }).catch(() => null);
+          
+          if (ipInfo) {
+            try {
+              const ipData = JSON.parse(ipInfo);
+              logger.info(MODULE_NAME, `实际出口 IP: ${ipData.ip || '无法获取'}`);
+              
+              // 检查 IP 是否与代理匹配
+              const proxyHost = proxyString.split(':')[0];
+              if (ipData.ip && !ipData.ip.includes(proxyHost.split('.')[0])) {
+                logger.warn(MODULE_NAME, `警告：出口 IP (${ipData.ip}) 可能与代理不匹配`);
+              }
+            } catch (e) {
+              logger.debug(MODULE_NAME, '无法解析 IP 信息', e);
+            }
+          }
+        }
+      } catch (error) {
+        logger.debug(MODULE_NAME, 'IP 检测失败（不影响主流程）', error);
       }
 
       // 构建真实的 HTTP 请求头（模拟真实移动浏览器）
@@ -282,9 +324,12 @@ class BrowserManager {
 
       // iOS Safari 特定的请求头
       if (device.platform === 'ios') {
-        headers['Sec-CH-UA'] = `"Not_A Brand";v="8", "Chromium";v="120", "Safari";v="16"`;
+        // iOS Safari 不使用 Sec-CH-UA（这是 Chrome 的特性）
+        // 但为了兼容性，可以添加
         headers['Sec-CH-UA-Mobile'] = '?1';
         headers['Sec-CH-UA-Platform'] = '"iOS"';
+        // iOS Safari 不使用 Sec-CH-UA，移除它以避免被检测
+        delete headers['Sec-CH-UA'];
       } else {
         // Android Chrome 特定的请求头
         headers['Sec-CH-UA'] = `"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"`;
@@ -476,9 +521,11 @@ class BrowserManager {
       const startTime = Date.now();
 
       // 开始加载页面（不等待加载完成，使用最新的待访问请求中的网址）
+      // 对于 Cloudflare 保护的网站，需要等待更长时间以完成挑战
+      // 增加超时时间以应对 Cloudflare 挑战
       const gotoPromise = page.goto(actualUrl, {
         waitUntil: 'domcontentloaded', // 只等待 DOM 加载，不等待网络空闲
-        timeout: 30000,
+        timeout: 60000, // 增加到 60 秒以应对 Cloudflare 挑战
       })
         .then(async (response) => {
           const loadTime = Date.now() - startTime;
