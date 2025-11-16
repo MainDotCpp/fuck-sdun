@@ -24,7 +24,7 @@ export default function DetectPage() {
         const getWebGLInfo = () => {
           try {
             const canvas = document.createElement('canvas');
-            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            const gl = (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null;
             if (!gl) return { renderer: null, vendor: null };
             
             const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
@@ -44,11 +44,11 @@ export default function DetectPage() {
         const getCanvasFingerprint = () => {
           try {
             const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return Math.random();
-            
             canvas.width = 200;
             canvas.height = 50;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return null;
+            
             ctx.textBaseline = 'top';
             ctx.font = '14px Arial';
             ctx.textBaseline = 'alphabetic';
@@ -59,9 +59,16 @@ export default function DetectPage() {
             ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
             ctx.fillText('Device fingerprint', 4, 17);
             
-            return canvas.toDataURL().split(',').pop()?.charCodeAt(0) || Math.random();
+            const dataURL = canvas.toDataURL();
+            // 计算一个简单的哈希值作为噪声种子（与 extract-device-data.html 保持一致）
+            let hash = 0;
+            for (let i = 0; i < dataURL.length; i++) {
+              hash = ((hash << 5) - hash) + dataURL.charCodeAt(i);
+              hash = hash & hash;
+            }
+            return Math.abs(hash) / 10000000000; // 归一化到 0-1 范围
           } catch (e) {
-            return Math.random();
+            return null;
           }
         };
 
@@ -79,19 +86,20 @@ export default function DetectPage() {
             analyser.connect(scriptProcessor);
             scriptProcessor.connect(gainNode);
             gainNode.connect(audioContext.destination);
+            
             oscillator.start(0);
             
             return new Promise<number>((resolve) => {
-              scriptProcessor.onaudioprocess = (event) => {
-                const output = event.inputBuffer.getChannelData(0);
+              scriptProcessor.onaudioprocess = (e: any) => {
+                const output = e.inputBuffer.getChannelData(0);
                 let sum = 0;
                 for (let i = 0; i < output.length; i++) {
                   sum += Math.abs(output[i]);
                 }
-                const fingerprint = sum / output.length;
+                const avg = sum / output.length;
                 oscillator.stop();
                 audioContext.close();
-                resolve(fingerprint);
+                resolve(Math.abs(avg * 1000000)); // 归一化（与 extract-device-data.html 保持一致）
               };
               setTimeout(() => {
                 oscillator.stop();
@@ -100,7 +108,7 @@ export default function DetectPage() {
               }, 100);
             });
           } catch (e) {
-            return Math.random();
+            return Promise.resolve(Math.random());
           }
         };
 
@@ -109,15 +117,15 @@ export default function DetectPage() {
           const connection = (navigator as any).connection || (navigator as any).mozConnection || (navigator as any).webkitConnection;
           if (connection) {
             return {
-              type: connection.type || null,
-              effectiveType: connection.effectiveType || null,
+              type: connection.type || 'unknown',
+              effectiveType: connection.effectiveType || 'unknown',
               downlink: connection.downlink || null,
               rtt: connection.rtt || null
             };
           }
           return {
-            type: null,
-            effectiveType: null,
+            type: 'unknown',
+            effectiveType: 'unknown',
             downlink: null,
             rtt: null
           };
@@ -125,25 +133,36 @@ export default function DetectPage() {
 
         // 提取操作系统版本
         const extractOSVersion = (ua: string) => {
-          if (/iPhone OS (\d+[_\d]*)/.test(ua)) {
-            return ua.match(/iPhone OS (\d+[_\d]*)/)?.[1].replace(/_/g, '.') || 'Unknown';
-          } else if (/Android (\d+\.\d+)/.test(ua)) {
-            return ua.match(/Android (\d+\.\d+)/)?.[1] || 'Unknown';
+          if (/iPhone OS (\d+[._]\d+)/.test(ua)) {
+            const match = ua.match(/iPhone OS (\d+[._]\d+)/);
+            return match ? match[1].replace('_', '.') : 'unknown';
           }
-          return 'Unknown';
+          if (/Android (\d+)/.test(ua)) {
+            const match = ua.match(/Android (\d+)/);
+            return match ? match[1] : 'unknown';
+          }
+          return 'unknown';
         };
 
         // 提取浏览器版本
         const extractBrowserVersion = (ua: string) => {
-          const match = ua.match(/(?:Chrome|Safari|Version)\/(\d+\.\d+)/);
-          return match ? match[1] : 'Unknown';
+          if (/Version\/(\d+[._]\d+)/.test(ua)) {
+            const match = ua.match(/Version\/(\d+[._]\d+)/);
+            return match ? match[1] : 'unknown';
+          }
+          if (/Chrome\/(\d+)/.test(ua)) {
+            const match = ua.match(/Chrome\/(\d+)/);
+            return match ? match[1] + '.0.0.0' : 'unknown';
+          }
+          return 'unknown';
         };
 
         // 提取浏览器名称
         const extractBrowserName = (ua: string) => {
-          if (ua.includes('Safari') && !ua.includes('Chrome')) {
+          if (/Safari/.test(ua) && !/Chrome/.test(ua)) {
             return 'Safari';
-          } else if (ua.includes('Chrome')) {
+          }
+          if (/Chrome/.test(ua)) {
             return 'Chrome';
           }
           return 'Unknown';

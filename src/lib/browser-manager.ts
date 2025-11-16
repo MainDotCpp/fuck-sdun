@@ -183,7 +183,7 @@ class BrowserManager {
     try {
       // 🐌 负优化：启动前随机延迟（模拟设备初始化时间，可以注释掉以提高响应速度）
       // 延迟放在获取锁之后，确保锁已获取
-      const randomDelay = Math.floor(Math.random() * (25000 - 15000 + 1)) + 15000; // 15-25秒随机延迟
+      const randomDelay = Math.floor(Math.random() * (25000 - 15000 + 1)) + 5000; // 15-25秒随机延迟
       logger.info(MODULE_NAME, `设备初始化中，预计等待 ${Math.round(randomDelay / 1000)} 秒...`);
       await new Promise(resolve => setTimeout(resolve, randomDelay));
 
@@ -294,7 +294,7 @@ class BrowserManager {
           // 确保释放锁
           this.releaseLock();
         }
-      }, 5000);
+      }, 10000);
 
       // 等待页面加载完成（但不影响关闭逻辑）
       await gotoPromise;

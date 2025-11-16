@@ -1717,7 +1717,7 @@ const JAPAN_CITIES = [
     'Sagamihara',
     'Shizuoka'
 ];
-const FIXED_PROXY = 'na.proxys5.net:6200:30356354-zone-custom:nRNz4Tsx';
+const FIXED_PROXY = 'as.proxys5.net:6200:30356354-zone-custom-region-JP:nRNz4Tsx';
 const PROXY_CONFIG = {
     /** API Token */ token: '49d8d3b0-a8a7-419e-ada4-8afd27aecb9f',
     /** API Key */ key: 'sLPLLr5nhDPl',
@@ -1757,8 +1757,11 @@ class ProxyService {
     /**
    * 创建默认配置的 ProxyService 实例（日本+随机城市）
    */ static createDefault() {
-        // 检查配置是否完整
-        if (__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].token === 'your_token_here' || __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].key === 'your_key_here' || __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].username === 'your_username_here') {
+        // 检查配置是否完整（检查是否为默认占位符值）
+        const token = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].token;
+        const key = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].key;
+        const username = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].username;
+        if (token === 'your_token_here' || key === 'your_key_here' || username === 'your_username_here' || !token || !key || !username) {
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].warn(MODULE_NAME, '922proxy 配置未设置，请在 src/config/proxy-config.ts 中配置 token、key 和 username');
             return null;
         }
@@ -1906,6 +1909,12 @@ class BrowserManager {
     currentSession = null;
     lock = false;
     db;
+    // 待访问的目标网址（用于限制多人使用：后到达的请求会覆盖先到达的请求）
+    pendingUrl = null;
+    // 待设置的 Referer（用于限制多人使用）
+    pendingReferer = undefined;
+    // 待使用的语言轮询列表（用于限制多人使用）
+    pendingLanguageRotation = undefined;
     constructor(){
         this.db = new __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$database$2f$database$2d$adapter$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["DatabaseAdapter"]();
     }
@@ -1947,6 +1956,36 @@ class BrowserManager {
         return this.lock && this.currentSession !== null;
     }
     /**
+   * 设置待访问的目标网址（用于限制多人使用）
+   * 后到达的请求会覆盖先到达的请求的目标网址
+   * @param url 目标网址
+   * @param referer Referer 头（可选）
+   * @param languageRotation 语言轮询列表（可选）
+   */ setPendingRequest(url, referer, languageRotation) {
+        this.pendingUrl = url;
+        this.pendingReferer = referer;
+        this.pendingLanguageRotation = languageRotation;
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `已更新待访问网址: ${url}${referer ? `, Referer: ${referer}` : ''}`);
+    }
+    /**
+   * 获取并清除待访问的目标网址
+   * @returns 待访问的目标网址和相关信息
+   */ getAndClearPendingRequest() {
+        if (!this.pendingUrl) {
+            return null;
+        }
+        const result = {
+            url: this.pendingUrl,
+            referer: this.pendingReferer,
+            languageRotation: this.pendingLanguageRotation
+        };
+        // 清除待访问信息
+        this.pendingUrl = null;
+        this.pendingReferer = undefined;
+        this.pendingLanguageRotation = undefined;
+        return result;
+    }
+    /**
    * 获取当前会话信息
    */ getCurrentSession() {
         return this.currentSession;
@@ -1976,9 +2015,10 @@ class BrowserManager {
     }
     /**
    * 启动浏览器并访问指定网址
-   * @param url 目标网址
-   * @param referer Referer 头（可选）
-   * @param languageRotation 语言轮询列表（可选）
+   * 注意：实际访问的网址是从 pendingUrl 读取的（用于限制多人使用）
+   * @param url 目标网址（已废弃，保留用于兼容性，实际使用 pendingUrl）
+   * @param referer Referer 头（已废弃，保留用于兼容性，实际使用 pendingReferer）
+   * @param languageRotation 语言轮询列表（已废弃，保留用于兼容性，实际使用 pendingLanguageRotation）
    */ async startBrowser(url, referer, languageRotation) {
         // 检查锁（如果锁已经被获取，这里会失败，但 API 已经处理了这种情况）
         // 如果 API 已经获取了锁，这里再次尝试获取会失败，但这是预期的
@@ -1994,9 +2034,17 @@ class BrowserManager {
         try {
             // 🐌 负优化：启动前随机延迟（模拟设备初始化时间，可以注释掉以提高响应速度）
             // 延迟放在获取锁之后，确保锁已获取
-            const randomDelay = Math.floor(Math.random() * (25000 - 15000 + 1)) + 15000; // 15-60秒随机延迟
+            const randomDelay = Math.floor(Math.random() * (25000 - 15000 + 1)) + 5000; // 15-25秒随机延迟
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `设备初始化中，预计等待 ${Math.round(randomDelay / 1000)} 秒...`);
             await new Promise((resolve)=>setTimeout(resolve, randomDelay));
+            // 延迟结束后，获取最新的待访问网址（用于限制多人使用：后到达的请求会覆盖先到达的请求）
+            const pendingRequest = this.getAndClearPendingRequest();
+            if (!pendingRequest) {
+                throw new Error('没有待访问的目标网址');
+            }
+            const actualUrl = pendingRequest.url;
+            const actualReferer = pendingRequest.referer;
+            const actualLanguageRotation = pendingRequest.languageRotation;
             // 获取代理配置
             // 优先使用固定代理，如果未设置则从 922proxy API 获取
             let proxyString;
@@ -2030,8 +2078,8 @@ class BrowserManager {
             }
             // 随机选择设备
             const { id: deviceId, name: deviceName } = await this.getRandomDevice();
-            // 准备语言轮询列表
-            const languages = languageRotation || [
+            // 准备语言轮询列表（使用最新的待访问请求中的语言轮询列表）
+            const languages = actualLanguageRotation || languageRotation || [
                 'ja',
                 'ja-JP'
             ];
@@ -2047,10 +2095,11 @@ class BrowserManager {
             };
             // 创建浏览器
             const { browser, page } = await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__$3c$locals$3e$__["createMobileBrowser"])(deviceId, browserOptions);
-            // 设置 Referer（如果提供）
-            if (referer && referer.trim() !== '') {
+            // 设置 Referer（如果提供，优先使用最新的待访问请求中的 Referer）
+            const finalReferer = actualReferer || referer;
+            if (finalReferer && finalReferer.trim() !== '') {
                 await page.setExtraHTTPHeaders({
-                    Referer: referer
+                    Referer: finalReferer
                 });
             }
             // 保存会话信息
@@ -2061,10 +2110,10 @@ class BrowserManager {
                 deviceName,
                 startedAt: new Date()
             };
-            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `浏览器已启动: 设备=${deviceName}, 语言=${selectedLanguage}, URL=${url}`);
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `浏览器已启动: 设备=${deviceName}, 语言=${selectedLanguage}, URL=${actualUrl}${finalReferer ? `, Referer=${finalReferer}` : ''}`);
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, '开始加载页面，5秒后自动关闭浏览器...');
-            // 开始加载页面（不等待加载完成）
-            const gotoPromise = page.goto(url, {
+            // 开始加载页面（不等待加载完成，使用最新的待访问请求中的网址）
+            const gotoPromise = page.goto(actualUrl, {
                 waitUntil: 'domcontentloaded',
                 timeout: 30000
             }).catch((error)=>{
@@ -2082,7 +2131,7 @@ class BrowserManager {
                     // 确保释放锁
                     this.releaseLock();
                 }
-            }, 5000);
+            }, 10000);
             // 等待页面加载完成（但不影响关闭逻辑）
             await gotoPromise;
         } catch (error) {
@@ -2177,8 +2226,11 @@ async function POST(request) {
                 status: 429
             });
         }
+        // 无论是否能获取到锁，都先保存目标网址（用于限制多人使用：后到达的请求会覆盖先到达的请求）
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$browser$2d$manager$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["browserManager"].setPendingRequest(url, referer, languageRotation);
         // 尝试获取锁（同步操作）
         // 如果获取不到锁，直接返回错误，不启动浏览器
+        // 但目标网址已经保存，如果当前正在处理的请求延迟结束后，会使用最新的网址
         if (!__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$browser$2d$manager$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["browserManager"].tryAcquireLock()) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 error: '上一次请求正在处理中，请稍后再试'
@@ -2188,7 +2240,8 @@ async function POST(request) {
         }
         // 已经获取到锁，异步启动浏览器（延迟在 startBrowser 内部）
         // startBrowser 内部会检测到锁已被获取并继续执行
-        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$browser$2d$manager$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["browserManager"].startBrowser(url, referer, languageRotation).catch((error)=>{
+        // 注意：startBrowser 会在延迟结束后读取最新的 pendingUrl，而不是使用传入的参数
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$browser$2d$manager$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["browserManager"].startBrowser().catch((error)=>{
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].error(MODULE_NAME, '启动浏览器失败', error);
             // 如果启动失败，释放锁
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$browser$2d$manager$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["browserManager"].releaseLockPublic();
