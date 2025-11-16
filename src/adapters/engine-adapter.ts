@@ -34,13 +34,14 @@ export class EngineAdapter {
     options?: LaunchOptions
   ): Promise<Browser> {
     const browserType = this.getBrowserType(platform);
+    const engine = getEngineForPlatform(platform);
     
-    // 合并反检测选项
-    const stealthOptions: LaunchOptions = {
-      ...options,
-      // 反检测：隐藏自动化特征
-      args: [
-        ...(options?.args || []),
+    // 根据浏览器引擎选择不同的启动参数
+    let stealthArgs: string[] = [];
+    
+    if (engine === 'chromium') {
+      // Chromium/Chrome 特定的反检测参数
+      stealthArgs = [
         '--disable-blink-features=AutomationControlled',
         '--disable-dev-shm-usage',
         '--disable-setuid-sandbox',
@@ -56,12 +57,26 @@ export class EngineAdapter {
         '--disable-popup-blocking',
         // 禁用密码保存提示
         '--disable-save-password-bubble',
-        // 使用真实的用户代理
-        '--user-agent=' + (options?.headless === false ? undefined : ''),
-      ].filter(Boolean) as string[],
+      ];
+    } else if (engine === 'webkit') {
+      // WebKit/Safari 特定的参数（较少，因为 WebKit 不支持大部分 Chrome 参数）
+      stealthArgs = [
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+        // WebKit 不支持 --disable-automation 等参数
+      ];
+    }
+    
+    // 合并反检测选项
+    const stealthOptions: LaunchOptions = {
+      ...options,
+      args: [
+        ...(options?.args || []),
+        ...stealthArgs,
+      ],
     };
 
-    logger.debug(MODULE_NAME, `启动浏览器: ${platform}, 引擎: ${getEngineForPlatform(platform)}`);
+    logger.debug(MODULE_NAME, `启动浏览器: ${platform}, 引擎: ${engine}, 参数数量: ${stealthArgs.length}`);
     
     const browser = await browserType.launch(stealthOptions);
     
