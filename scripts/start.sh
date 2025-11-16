@@ -39,7 +39,7 @@ pnpm next:build
 # 5. 启动应用（使用 PM2）
 echo "✅ 启动应用..."
 if command -v pm2 &> /dev/null; then
-  pm2 start ecosystem.config.js
+  pm2 start ecosystem.config.cjs
   echo "应用已启动，使用 'pm2 status' 查看状态"
 else
   echo "⚠️  PM2 未安装，使用 'pnpm next:start' 启动"

@@ -26,7 +26,7 @@ pnpm next:build
 
 ### 2. PM2 配置文件
 
-项目已包含 `ecosystem.config.js` 配置文件，包含以下配置：
+项目已包含 `ecosystem.config.cjs` 配置文件，包含以下配置：
 
 - **应用名称**: `fuck-sdun`
 - **启动脚本**: `next start`
@@ -39,7 +39,7 @@ pnpm next:build
 
 ### 3. 环境变量
 
-在 `ecosystem.config.js` 中配置环境变量，或使用 `.env` 文件：
+在 `ecosystem.config.cjs` 中配置环境变量，或使用 `.env` 文件：
 
 ```bash
 # .env 文件
@@ -87,7 +87,7 @@ pnpm prisma migrate deploy
 pnpm next:build
 
 # 5. 启动应用（使用 PM2）
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 ```
 
 ### 方式三：使用 setup 脚本
@@ -96,7 +96,7 @@ pm2 start ecosystem.config.js
 
 ```bash
 pnpm setup
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 ```
 
 ### 3. 查看状态
@@ -255,7 +255,7 @@ pnpm next:build
 pnpm next:dev
 
 # 启动（生产，使用 PM2）
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 
 # 查看日志
 pm2 logs fuck-sdun
