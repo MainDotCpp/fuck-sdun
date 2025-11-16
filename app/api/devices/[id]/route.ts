@@ -14,15 +14,20 @@ const MODULE_NAME = 'API:Device';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   const db = new DatabaseAdapter();
   
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    // 兼容 Next.js 14 和 15：params 可能是 Promise 或直接对象
+    const paramsObj = params instanceof Promise ? await params : params;
+    const idParam = paramsObj.id;
+    const id = parseInt(idParam);
+    
+    if (isNaN(id) || id <= 0) {
+      logger.warn(MODULE_NAME, '无效的设备 ID', { idParam, parsedId: id });
       return NextResponse.json(
-        { error: '无效的设备 ID' },
+        { error: `无效的设备 ID: ${idParam}` },
         { status: 400 }
       );
     }
@@ -55,15 +60,20 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   const db = new DatabaseAdapter();
   
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    // 兼容 Next.js 14 和 15：params 可能是 Promise 或直接对象
+    const paramsObj = params instanceof Promise ? await params : params;
+    const idParam = paramsObj.id;
+    const id = parseInt(idParam);
+    
+    if (isNaN(id) || id <= 0) {
+      logger.warn(MODULE_NAME, '无效的设备 ID', { idParam, parsedId: id });
       return NextResponse.json(
-        { error: '无效的设备 ID' },
+        { error: `无效的设备 ID: ${idParam}` },
         { status: 400 }
       );
     }
@@ -157,15 +167,22 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   const db = new DatabaseAdapter();
   
   try {
-    const id = parseInt(params.id);
-    if (isNaN(id)) {
+    // 兼容 Next.js 14 和 15：params 可能是 Promise 或直接对象
+    const paramsObj = params instanceof Promise ? await params : params;
+    const idParam = paramsObj.id;
+    const id = parseInt(idParam);
+    
+    logger.info(MODULE_NAME, '删除设备请求', { idParam, parsedId: id, type: typeof idParam });
+    
+    if (isNaN(id) || id <= 0) {
+      logger.warn(MODULE_NAME, '无效的设备 ID', { idParam, parsedId: id, type: typeof idParam });
       return NextResponse.json(
-        { error: '无效的设备 ID' },
+        { error: `无效的设备 ID: ${idParam}` },
         { status: 400 }
       );
     }
