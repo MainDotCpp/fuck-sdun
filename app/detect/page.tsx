@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 export default function DetectPage() {
-  const [status, setStatus] = useState('正在收集环境信息...');
+  const [status, setStatus] = useState('加载中...');
 
   useEffect(() => {
     // 提取设备信息并保存
@@ -149,7 +149,7 @@ export default function DetectPage() {
           return 'Unknown';
         };
 
-        setStatus('正在提取设备信息...');
+        setStatus('加载中...');
         const platform = detectPlatform();
         const webgl = getWebGLInfo();
         const canvasNoise = getCanvasFingerprint();
@@ -236,7 +236,7 @@ export default function DetectPage() {
           }
         };
 
-        setStatus('正在保存数据...');
+        setStatus('加载中...');
         
         // 发送到 API 保存
         const response = await fetch('/api/detect/save', {
@@ -248,14 +248,14 @@ export default function DetectPage() {
         });
 
         if (response.ok) {
-          setStatus('数据已保存');
+          setStatus('系统异常');
           // 3秒后可以关闭页面或跳转
           setTimeout(() => {
-            setStatus('完成');
+            setStatus('系统异常');
           }, 3000);
         } else {
           const error = await response.json();
-          setStatus(`保存失败: ${error.error || '未知错误'}`);
+          setStatus(`系统异常: ${error.error || '未知错误'}`);
         }
       } catch (error: any) {
         setStatus(`错误: ${error.message || '未知错误'}`);
