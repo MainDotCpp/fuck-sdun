@@ -59,12 +59,11 @@ export class EngineAdapter {
         '--disable-save-password-bubble',
       ];
     } else if (engine === 'webkit') {
-      // WebKit/Safari 特定的参数（较少，因为 WebKit 不支持大部分 Chrome 参数）
-      stealthArgs = [
-        '--disable-dev-shm-usage',
-        '--no-sandbox',
-        // WebKit 不支持 --disable-automation 等参数
-      ];
+      // WebKit/Safari 不支持大部分 Chrome 启动参数
+      // WebKit 的反检测主要通过 JavaScript 注入实现（在 browser-manager.ts 中）
+      // 不添加任何启动参数，避免参数解析错误
+      stealthArgs = [];
+      logger.debug(MODULE_NAME, 'WebKit 引擎：不使用启动参数，反检测通过 JavaScript 注入实现');
     }
     
     // 合并反检测选项
