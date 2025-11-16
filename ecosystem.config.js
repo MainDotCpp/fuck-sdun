@@ -12,6 +12,8 @@ module.exports = {
       cwd: './',
       instances: 1, // 单实例运行（Playwright 需要单实例）
       exec_mode: 'fork', // 使用 fork 模式（单实例）
+      // 启动前执行的命令（仅在首次启动时执行）
+      // 注意：PM2 的 pre_start 钩子不会自动执行，需要手动运行构建
       env: {
         NODE_ENV: 'production',
         PORT: 9292,

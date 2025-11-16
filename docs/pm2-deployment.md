@@ -50,21 +50,53 @@ LOG_LEVEL=info
 
 ## 部署步骤
 
-### 1. 构建应用
+### 方式一：使用启动脚本（推荐）
+
+启动脚本会自动执行依赖安装、数据库迁移、构建和启动：
 
 ```bash
-pnpm install
-pnpm next:build
+# 使用启动脚本（包含完整流程）
+pnpm start:prod
+
+# 或直接执行脚本
+bash scripts/start.sh
 ```
 
-### 2. 启动应用
+启动脚本会依次执行：
+1. ✅ 安装依赖 (`pnpm install`)
+2. ✅ 生成 Prisma Client (`pnpm prisma generate`)
+3. ✅ 运行数据库迁移 (`pnpm prisma migrate deploy`)
+4. ✅ 构建 Next.js 应用 (`pnpm next:build`)
+5. ✅ 启动应用（使用 PM2）
+
+### 方式二：手动部署
+
+如果需要手动控制每个步骤：
 
 ```bash
-# 使用 PM2 启动
-pm2 start ecosystem.config.js
+# 1. 安装依赖
+pnpm install
 
-# 或直接启动
-pm2 start npm --name "fuck-sdun" -- start
+# 2. 生成 Prisma Client
+pnpm prisma generate
+
+# 3. 运行数据库迁移（如果需要）
+pnpm prisma migrate deploy
+
+# 4. 构建应用
+pnpm next:build
+
+# 5. 启动应用（使用 PM2）
+pm2 start ecosystem.config.js
+```
+
+### 方式三：使用 setup 脚本
+
+快速设置（安装依赖、生成 Prisma、构建）：
+
+```bash
+pnpm setup
+pm2 start ecosystem.config.js
 ```
 
 ### 3. 查看状态
