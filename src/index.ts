@@ -27,8 +27,12 @@ export async function createMobileBrowser(
   // 2. 选择浏览器引擎并启动浏览器
   const engineAdapter = new EngineAdapter();
   const launchOptions = options?.launchOptions ? { ...options.launchOptions } : {};
+  // 优先使用 launchOptions 中的 headless，否则使用 options.headless，最后 fallback 到 false
+  const headlessValue = launchOptions.headless !== undefined 
+    ? launchOptions.headless 
+    : (options?.headless ?? false);
   const browser = await engineAdapter.launchBrowser(device.platform, {
-    headless: options?.headless ?? false,
+    headless: headlessValue as any, // 支持 'new' 模式
     ...launchOptions,
   });
 

@@ -234,19 +234,32 @@ class BrowserManager {
       // 随机选择设备
       const { id: deviceId, name: deviceName } = await this.getRandomDevice();
 
+      // 获取设备平台以确定浏览器引擎
+      const device = await this.db.getDeviceById(parseInt(deviceId));
+      if (!device) {
+        throw new Error(`设备 ${deviceId} 不存在`);
+      }
+      const platform = device.platform;
+      const isWebKit = platform === 'ios'; // iOS 使用 WebKit，Android 使用 Chromium
+
       // 准备语言轮询列表（使用最新的待访问请求中的语言轮询列表）
       const languages = actualLanguageRotation || languageRotation || ['ja', 'ja-JP'];
       const selectedLanguage = this.getRandomLanguage(languages);
 
       // 配置浏览器选项
+      // WebKit (iOS) 不支持 'new' headless 模式，只能使用 true/false
+      // Chromium (Android) 支持 'new' headless 模式，更难被检测
+      const headlessMode = isWebKit ? true : 'new'; // WebKit 使用 true，Chromium 使用 'new'
       const browserOptions: BrowserOptions = {
-        headless: true,
+        headless: headlessMode,
         launchOptions: {
-          headless: true,
+          headless: headlessMode as any, // WebKit 不支持 'new'，但 Chromium 支持
         },
         languageRotation: languages,
         proxy: proxyString, // 使用代理（固定代理或从 API 获取）
       };
+      
+      logger.info(MODULE_NAME, `浏览器引擎: ${isWebKit ? 'WebKit (iOS)' : 'Chromium (Android)'}, Headless 模式: ${headlessMode}`);
 
       // 记录环境信息（用于对比本地和服务器差异）
       const envInfo = {
@@ -262,11 +275,7 @@ class BrowserManager {
       // 创建浏览器
       const { browser, page } = await createMobileBrowser(deviceId, browserOptions);
 
-      // 获取设备配置以构建真实的请求头
-      const device = await this.db.getDeviceById(parseInt(deviceId));
-      if (!device) {
-        throw new Error(`设备 ${deviceId} 不存在`);
-      }
+      // device 已在上面获取，这里直接使用
 
       // 检测实际出口 IP（用于验证代理是否生效）
       try {
@@ -352,23 +361,44 @@ class BrowserManager {
         }
       });
 
-      // 应用增强的反检测脚本（针对 Cloudflare）
+      // 应用增强的反检测脚本（针对 Cloudflare，特别是 headless 检测）
+      // WebKit (iOS Safari) 和 Chromium (Android Chrome) 都需要这些检测绕过
       await page.addInitScript(() => {
-        // 1. 移除 webdriver 标识
+        // 1. 移除 webdriver 标识（关键：headless 检测的核心）
+        // WebKit 和 Chromium 都需要移除这个标识
         Object.defineProperty(navigator, 'webdriver', {
           get: () => undefined,
+          configurable: true,
         });
         
-        // 2. 覆盖 Chrome 自动化标识
+        // 2. 覆盖 Chrome 自动化标识（仅 Chromium 需要，WebKit 没有 chrome 对象）
+        // 但为了兼容性，检查是否存在再覆盖
         if ((window as any).chrome) {
           Object.defineProperty(window, 'chrome', {
             get: () => ({
               runtime: {},
+              loadTimes: function() {},
+              csi: function() {},
+              app: {},
             }),
+            configurable: true,
           });
         }
         
-        // 3. 覆盖 permissions API
+        // 2b. WebKit (Safari) 特定的检测绕过
+        // Safari 没有 chrome 对象，但可能有其他自动化标识
+        if (!(window as any).chrome && (navigator as any).vendor && (navigator as any).vendor.includes('Apple')) {
+          // Safari 特定的检测绕过
+          // 确保 navigator.standalone 存在（iOS Safari 特有）
+          if (typeof (navigator as any).standalone === 'undefined') {
+            Object.defineProperty(navigator, 'standalone', {
+              get: () => false,
+              configurable: true,
+            });
+          }
+        }
+        
+        // 3. 覆盖 permissions API（headless 模式下可能不同）
         const originalQuery = window.navigator.permissions.query;
         window.navigator.permissions.query = (parameters: any) =>
           parameters.name === 'notifications'
@@ -389,6 +419,7 @@ class BrowserManager {
               }
               return plugins;
             },
+            configurable: true,
           });
         }
         
@@ -397,6 +428,9 @@ class BrowserManager {
         
         // 6. 移除自动化相关的属性
         delete (window as any).navigator.__proto__.webdriver;
+        delete (window as any).__playwright;
+        delete (window as any).__pw_manual;
+        delete (window as any).__playwright_evaluation__;
         
         // 7. 覆盖 iframe 检测
         const originalToString = Function.prototype.toString;
@@ -439,6 +473,65 @@ class BrowserManager {
           }
           return originalAddEventListener.call(this, type, listener, options);
         };
+        
+        // 11. 【新增】模拟截图能力（绕过 Cloudflare 的截图检测）
+        // Cloudflare 会检测浏览器是否支持截图，headless 模式下可能不支持
+        // 通过覆盖相关 API 来模拟支持截图
+        if (typeof (window as any).chrome !== 'undefined' && (window as any).chrome.runtime) {
+          // 确保 chrome.runtime 存在，表明浏览器支持扩展（间接表明支持截图）
+          Object.defineProperty((window as any).chrome, 'runtime', {
+            get: () => ({
+              onConnect: undefined,
+              onMessage: undefined,
+            }),
+            configurable: true,
+          });
+        }
+        
+        // 12. 【新增】覆盖 document.documentElement 的某些属性（headless 检测）
+        // 某些检测脚本会检查 document.documentElement 的属性
+        const originalGetAttribute = Element.prototype.getAttribute;
+        Element.prototype.getAttribute = function(name: string) {
+          // 如果检测脚本尝试获取某些特殊属性，返回正常值
+          return originalGetAttribute.call(this, name);
+        };
+        
+        // 13. 【新增】覆盖 window.outerHeight 和 window.outerWidth（headless 检测）
+        // headless 模式下这些值可能为 0
+        if (window.outerHeight === 0 || window.outerWidth === 0) {
+          Object.defineProperty(window, 'outerHeight', {
+            get: () => window.innerHeight || 844,
+            configurable: true,
+          });
+          Object.defineProperty(window, 'outerWidth', {
+            get: () => window.innerWidth || 390,
+            configurable: true,
+          });
+        }
+        
+        // 14. 【新增】覆盖 Notification API（headless 检测）
+        // 某些检测脚本会检查 Notification 权限
+        if (Notification.permission === 'denied') {
+          Object.defineProperty(Notification, 'permission', {
+            get: () => 'default',
+            configurable: true,
+          });
+        }
+        
+        // 15. 【新增】移除 CDP 相关标识
+        // Chrome DevTools Protocol 标识可能暴露自动化
+        Object.keys(window).forEach(key => {
+          if (key.toLowerCase().includes('cdp') || 
+              key.toLowerCase().includes('devtools') ||
+              key.toLowerCase().includes('__playwright') ||
+              key.toLowerCase().includes('__pw')) {
+            try {
+              delete (window as any)[key];
+            } catch (e) {
+              // 忽略无法删除的属性
+            }
+          }
+        });
       });
       
       logger.info(MODULE_NAME, '已应用增强的反检测脚本（针对 Cloudflare）');

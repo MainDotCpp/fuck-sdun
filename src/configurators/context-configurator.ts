@@ -7,8 +7,8 @@ import type { DeviceProfile } from '../types/index';
 import { FingerprintInjector } from '../injectors/fingerprint-injector';
 
 export interface BrowserOptions {
-  /** 是否无头模式 */
-  headless?: boolean;
+  /** 是否无头模式（支持 'new' 模式，更难被检测） */
+  headless?: boolean | 'new';
   /** 浏览器启动选项 */
   launchOptions?: Parameters<BrowserType['launch']>[0];
   /** 上下文选项 */
