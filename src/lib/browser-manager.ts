@@ -272,21 +272,165 @@ class BrowserManager {
         MODULE_NAME,
         `浏览器已启动: 设备=${deviceName}, 语言=${selectedLanguage}, URL=${actualUrl}${finalReferer ? `, Referer=${finalReferer}` : ''}`
       );
-      logger.info(MODULE_NAME, '开始加载页面，5秒后自动关闭浏览器...');
+
+      // 监听页面事件以获取更多信息
+      const pageEvents: {
+        loaded: boolean;
+        responseReceived: boolean;
+        responseStatus?: number;
+        finalUrl?: string;
+        pageTitle?: string;
+        errors: string[];
+        warnings: string[];
+        networkRequests: Array<{ url: string; method: string; status?: number }>;
+      } = {
+        loaded: false,
+        responseReceived: false,
+        errors: [],
+        warnings: [],
+        networkRequests: [],
+      };
+
+      // 监听控制台消息
+      page.on('console', (msg) => {
+        const text = msg.text();
+        if (msg.type() === 'error') {
+          pageEvents.errors.push(text);
+          logger.warn(MODULE_NAME, `页面控制台错误: ${text}`);
+        } else if (msg.type() === 'warning') {
+          pageEvents.warnings.push(text);
+          logger.debug(MODULE_NAME, `页面控制台警告: ${text}`);
+        }
+      });
+
+      // 监听页面响应
+      page.on('response', (response) => {
+        const url = response.url();
+        const status = response.status();
+        const method = response.request().method();
+        
+        pageEvents.responseReceived = true;
+        pageEvents.responseStatus = status;
+        pageEvents.networkRequests.push({ url, method, status });
+        
+        // 记录主请求的响应
+        if (url === actualUrl || url.includes(new URL(actualUrl).hostname)) {
+          logger.info(MODULE_NAME, `收到页面响应: ${method} ${url} -> ${status}`);
+        }
+      });
+
+      // 监听页面请求
+      page.on('request', (request) => {
+        const url = request.url();
+        const method = request.method();
+        pageEvents.networkRequests.push({ url, method });
+        logger.debug(MODULE_NAME, `页面请求: ${method} ${url}`);
+      });
+
+      // 监听页面加载完成
+      page.on('load', () => {
+        pageEvents.loaded = true;
+        logger.info(MODULE_NAME, '页面 load 事件触发');
+      });
+
+      logger.info(MODULE_NAME, '开始加载页面，15秒后自动关闭浏览器...');
+      const startTime = Date.now();
 
       // 开始加载页面（不等待加载完成，使用最新的待访问请求中的网址）
       const gotoPromise = page.goto(actualUrl, {
         waitUntil: 'domcontentloaded', // 只等待 DOM 加载，不等待网络空闲
         timeout: 30000,
-      }).catch((error) => {
-        // 即使页面加载失败，也继续执行关闭逻辑
-        logger.warn(MODULE_NAME, '页面加载过程中出现错误（将继续执行关闭逻辑）', error);
-      });
+      })
+        .then(async (response) => {
+          const loadTime = Date.now() - startTime;
+          const finalUrl = page.url();
+          const pageTitle = await page.title().catch(() => '无法获取标题');
+          
+          pageEvents.finalUrl = finalUrl;
+          pageEvents.pageTitle = pageTitle;
+          pageEvents.loaded = true;
+          
+          logger.info(
+            MODULE_NAME,
+            `页面加载成功: 状态码=${response?.status() || 'N/A'}, 耗时=${loadTime}ms, 最终URL=${finalUrl}, 标题=${pageTitle}`
+          );
+          
+          // 检查是否被重定向
+          if (finalUrl !== actualUrl) {
+            logger.info(MODULE_NAME, `页面发生重定向: ${actualUrl} -> ${finalUrl}`);
+          }
+          
+          return response;
+        })
+        .catch(async (error) => {
+          const loadTime = Date.now() - startTime;
+          let finalUrl: string;
+          let pageTitle: string;
+          
+          try {
+            finalUrl = page.url();
+            pageTitle = await page.title();
+          } catch (e) {
+            finalUrl = '无法获取URL';
+            pageTitle = '无法获取标题';
+          }
+          
+          pageEvents.finalUrl = finalUrl;
+          pageEvents.pageTitle = pageTitle;
+          
+          logger.error(
+            MODULE_NAME,
+            `页面加载失败: 耗时=${loadTime}ms, 最终URL=${finalUrl}, 标题=${pageTitle}`,
+            error
+          );
+          
+          // 记录详细的错误信息
+          if (error.message) {
+            logger.error(MODULE_NAME, `错误详情: ${error.message}`);
+          }
+          
+          // 即使页面加载失败，也继续执行关闭逻辑（不抛出错误）
+          return null;
+        });
 
       // 从开始加载算起，5秒后自动关闭浏览器
       setTimeout(async () => {
         try {
-          logger.info(MODULE_NAME, '5秒时间到，自动关闭浏览器...');
+          const elapsedTime = Date.now() - startTime;
+          
+          // 汇总页面加载信息
+          logger.info(MODULE_NAME, '='.repeat(60));
+          logger.info(MODULE_NAME, '页面访问摘要:');
+          logger.info(MODULE_NAME, `  目标URL: ${actualUrl}`);
+          logger.info(MODULE_NAME, `  最终URL: ${pageEvents.finalUrl || '未获取到'}`);
+          logger.info(MODULE_NAME, `  页面标题: ${pageEvents.pageTitle || '未获取到'}`);
+          logger.info(MODULE_NAME, `  是否收到响应: ${pageEvents.responseReceived ? '是' : '否'}`);
+          logger.info(MODULE_NAME, `  响应状态码: ${pageEvents.responseStatus || 'N/A'}`);
+          logger.info(MODULE_NAME, `  是否触发load事件: ${pageEvents.loaded ? '是' : '否'}`);
+          logger.info(MODULE_NAME, `  网络请求数: ${pageEvents.networkRequests.length}`);
+          logger.info(MODULE_NAME, `  控制台错误数: ${pageEvents.errors.length}`);
+          logger.info(MODULE_NAME, `  控制台警告数: ${pageEvents.warnings.length}`);
+          logger.info(MODULE_NAME, `  总耗时: ${elapsedTime}ms`);
+          
+          // 记录前几个网络请求（最多5个）
+          if (pageEvents.networkRequests.length > 0) {
+            logger.info(MODULE_NAME, '  主要网络请求:');
+            pageEvents.networkRequests.slice(0, 5).forEach((req, index) => {
+              logger.info(MODULE_NAME, `    ${index + 1}. ${req.method} ${req.url} ${req.status ? `-> ${req.status}` : ''}`);
+            });
+          }
+          
+          // 记录控制台错误（如果有）
+          if (pageEvents.errors.length > 0) {
+            logger.warn(MODULE_NAME, '  控制台错误:');
+            pageEvents.errors.slice(0, 3).forEach((err, index) => {
+              logger.warn(MODULE_NAME, `    ${index + 1}. ${err}`);
+            });
+          }
+          
+          logger.info(MODULE_NAME, '='.repeat(60));
+          logger.info(MODULE_NAME, '15秒时间到，自动关闭浏览器...');
+          
           await this.closeBrowser();
           logger.info(MODULE_NAME, '浏览器已关闭');
         } catch (error) {
@@ -294,7 +438,7 @@ class BrowserManager {
           // 确保释放锁
           this.releaseLock();
         }
-      }, 10000);
+      }, 15000); // 修复：改为 5000 毫秒（5秒）
 
       // 等待页面加载完成（但不影响关闭逻辑）
       await gotoPromise;
