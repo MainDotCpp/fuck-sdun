@@ -5,7 +5,15 @@
 
 set -e  # 遇到错误立即退出
 
+# 获取脚本所在目录的绝对路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# 切换到项目目录
+cd "$PROJECT_DIR" || exit 1
+
 echo "🚀 开始启动流程..."
+echo "📁 项目目录: $PROJECT_DIR"
 
 # 1. 安装依赖
 echo "📦 安装依赖..."

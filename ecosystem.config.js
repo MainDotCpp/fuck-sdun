@@ -1,7 +1,9 @@
-/**
+1/**
  * PM2 配置文件
  * 用于生产环境部署
  */
+
+const path = require('path');
 
 module.exports = {
   apps: [
@@ -9,7 +11,7 @@ module.exports = {
       name: 'fuck-sdun',
       script: 'node_modules/next/dist/bin/next',
       args: 'start',
-      cwd: './',
+      cwd: path.resolve(__dirname),
       instances: 1, // 单实例运行（Playwright 需要单实例）
       exec_mode: 'fork', // 使用 fork 模式（单实例）
       // 启动前执行的命令（仅在首次启动时执行）
