@@ -42,8 +42,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 无论是否能获取到锁，都先保存目标网址（用于限制多人使用：后到达的请求会覆盖先到达的请求）
+    browserManager.setPendingRequest(url, referer, languageRotation);
+
     // 尝试获取锁（同步操作）
     // 如果获取不到锁，直接返回错误，不启动浏览器
+    // 但目标网址已经保存，如果当前正在处理的请求延迟结束后，会使用最新的网址
     if (!browserManager.tryAcquireLock()) {
       return NextResponse.json(
         { error: '上一次请求正在处理中，请稍后再试' },
@@ -53,7 +57,8 @@ export async function POST(request: NextRequest) {
 
     // 已经获取到锁，异步启动浏览器（延迟在 startBrowser 内部）
     // startBrowser 内部会检测到锁已被获取并继续执行
-    browserManager.startBrowser(url, referer, languageRotation).catch((error) => {
+    // 注意：startBrowser 会在延迟结束后读取最新的 pendingUrl，而不是使用传入的参数
+    browserManager.startBrowser().catch((error) => {
       logger.error(MODULE_NAME, '启动浏览器失败', error);
       // 如果启动失败，释放锁
       browserManager.releaseLockPublic();

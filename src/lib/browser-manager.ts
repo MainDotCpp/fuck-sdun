@@ -25,6 +25,12 @@ class BrowserManager {
   private currentSession: BrowserSession | null = null;
   private lock: boolean = false;
   private db: DatabaseAdapter;
+  // 待访问的目标网址（用于限制多人使用：后到达的请求会覆盖先到达的请求）
+  private pendingUrl: string | null = null;
+  // 待设置的 Referer（用于限制多人使用）
+  private pendingReferer: string | undefined = undefined;
+  // 待使用的语言轮询列表（用于限制多人使用）
+  private pendingLanguageRotation: string[] | undefined = undefined;
 
   private constructor() {
     this.db = new DatabaseAdapter();
@@ -79,6 +85,44 @@ class BrowserManager {
   }
 
   /**
+   * 设置待访问的目标网址（用于限制多人使用）
+   * 后到达的请求会覆盖先到达的请求的目标网址
+   * @param url 目标网址
+   * @param referer Referer 头（可选）
+   * @param languageRotation 语言轮询列表（可选）
+   */
+  setPendingRequest(url: string, referer?: string, languageRotation?: string[]): void {
+    this.pendingUrl = url;
+    this.pendingReferer = referer;
+    this.pendingLanguageRotation = languageRotation;
+    logger.info(MODULE_NAME, `已更新待访问网址: ${url}${referer ? `, Referer: ${referer}` : ''}`);
+  }
+
+  /**
+   * 获取并清除待访问的目标网址
+   * @returns 待访问的目标网址和相关信息
+   */
+  private getAndClearPendingRequest(): {
+    url: string;
+    referer?: string;
+    languageRotation?: string[];
+  } | null {
+    if (!this.pendingUrl) {
+      return null;
+    }
+    const result = {
+      url: this.pendingUrl,
+      referer: this.pendingReferer,
+      languageRotation: this.pendingLanguageRotation,
+    };
+    // 清除待访问信息
+    this.pendingUrl = null;
+    this.pendingReferer = undefined;
+    this.pendingLanguageRotation = undefined;
+    return result;
+  }
+
+  /**
    * 获取当前会话信息
    */
   getCurrentSession(): BrowserSession | null {
@@ -114,12 +158,13 @@ class BrowserManager {
 
   /**
    * 启动浏览器并访问指定网址
-   * @param url 目标网址
-   * @param referer Referer 头（可选）
-   * @param languageRotation 语言轮询列表（可选）
+   * 注意：实际访问的网址是从 pendingUrl 读取的（用于限制多人使用）
+   * @param url 目标网址（已废弃，保留用于兼容性，实际使用 pendingUrl）
+   * @param referer Referer 头（已废弃，保留用于兼容性，实际使用 pendingReferer）
+   * @param languageRotation 语言轮询列表（已废弃，保留用于兼容性，实际使用 pendingLanguageRotation）
    */
   async startBrowser(
-    url: string,
+    url?: string,
     referer?: string,
     languageRotation?: string[]
   ): Promise<void> {
@@ -138,9 +183,18 @@ class BrowserManager {
     try {
       // 🐌 负优化：启动前随机延迟（模拟设备初始化时间，可以注释掉以提高响应速度）
       // 延迟放在获取锁之后，确保锁已获取
-      const randomDelay = Math.floor(Math.random() * (25000 - 15000 + 1)) + 15000; // 15-60秒随机延迟
+      const randomDelay = Math.floor(Math.random() * (25000 - 15000 + 1)) + 15000; // 15-25秒随机延迟
       logger.info(MODULE_NAME, `设备初始化中，预计等待 ${Math.round(randomDelay / 1000)} 秒...`);
       await new Promise(resolve => setTimeout(resolve, randomDelay));
+
+      // 延迟结束后，获取最新的待访问网址（用于限制多人使用：后到达的请求会覆盖先到达的请求）
+      const pendingRequest = this.getAndClearPendingRequest();
+      if (!pendingRequest) {
+        throw new Error('没有待访问的目标网址');
+      }
+      const actualUrl = pendingRequest.url;
+      const actualReferer = pendingRequest.referer;
+      const actualLanguageRotation = pendingRequest.languageRotation;
 
       // 获取代理配置
       // 优先使用固定代理，如果未设置则从 922proxy API 获取
@@ -180,8 +234,8 @@ class BrowserManager {
       // 随机选择设备
       const { id: deviceId, name: deviceName } = await this.getRandomDevice();
 
-      // 准备语言轮询列表
-      const languages = languageRotation || ['ja', 'ja-JP'];
+      // 准备语言轮询列表（使用最新的待访问请求中的语言轮询列表）
+      const languages = actualLanguageRotation || languageRotation || ['ja', 'ja-JP'];
       const selectedLanguage = this.getRandomLanguage(languages);
 
       // 配置浏览器选项
@@ -197,10 +251,11 @@ class BrowserManager {
       // 创建浏览器
       const { browser, page } = await createMobileBrowser(deviceId, browserOptions);
 
-      // 设置 Referer（如果提供）
-      if (referer && referer.trim() !== '') {
+      // 设置 Referer（如果提供，优先使用最新的待访问请求中的 Referer）
+      const finalReferer = actualReferer || referer;
+      if (finalReferer && finalReferer.trim() !== '') {
         await page.setExtraHTTPHeaders({
-          Referer: referer,
+          Referer: finalReferer,
         });
       }
 
@@ -215,12 +270,12 @@ class BrowserManager {
 
       logger.info(
         MODULE_NAME,
-        `浏览器已启动: 设备=${deviceName}, 语言=${selectedLanguage}, URL=${url}`
+        `浏览器已启动: 设备=${deviceName}, 语言=${selectedLanguage}, URL=${actualUrl}${finalReferer ? `, Referer=${finalReferer}` : ''}`
       );
       logger.info(MODULE_NAME, '开始加载页面，5秒后自动关闭浏览器...');
 
-      // 开始加载页面（不等待加载完成）
-      const gotoPromise = page.goto(url, {
+      // 开始加载页面（不等待加载完成，使用最新的待访问请求中的网址）
+      const gotoPromise = page.goto(actualUrl, {
         waitUntil: 'domcontentloaded', // 只等待 DOM 加载，不等待网络空闲
         timeout: 30000,
       }).catch((error) => {
