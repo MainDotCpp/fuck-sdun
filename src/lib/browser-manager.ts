@@ -249,7 +249,7 @@ class BrowserManager {
       // 配置浏览器选项
       // WebKit (iOS) 不支持 'new' headless 模式，只能使用 true/false
       // Chromium (Android) 支持 'new' headless 模式，更难被检测
-      const headlessMode = isWebKit ? true : 'new'; // WebKit 使用 true，Chromium 使用 'new'
+      const headlessMode = isWebKit ? false : 'new'; // WebKit 使用 true，Chromium 使用 'new'
       const browserOptions: BrowserOptions = {
         headless: headlessMode,
         launchOptions: {
@@ -279,35 +279,6 @@ class BrowserManager {
 
       // 检测实际出口 IP（用于验证代理是否生效）
       try {
-        const ipCheckResponse = await page.goto('https://api.ipify.org?format=json', {
-          waitUntil: 'networkidle',
-          timeout: 10000,
-        }).catch(() => null);
-        
-        if (ipCheckResponse) {
-          const ipInfo = await page.evaluate(() => {
-            return document.body.textContent;
-          }).catch(() => null);
-          
-          if (ipInfo) {
-            try {
-              const ipData = JSON.parse(ipInfo);
-              logger.info(MODULE_NAME, `实际出口 IP: ${ipData.ip || '无法获取'}`);
-              
-              // 检查 IP 是否与代理匹配
-              const proxyHost = proxyString.split(':')[0];
-              if (ipData.ip && !ipData.ip.includes(proxyHost.split('.')[0])) {
-                logger.warn(MODULE_NAME, `警告：出口 IP (${ipData.ip}) 可能与代理不匹配`);
-              }
-            } catch (e) {
-              logger.debug(MODULE_NAME, '无法解析 IP 信息', e);
-            }
-          }
-        }
-      } catch (error) {
-        logger.debug(MODULE_NAME, 'IP 检测失败（不影响主流程）', error);
-      }
-
       // 构建真实的 HTTP 请求头（模拟真实移动浏览器）
       const headers: Record<string, string> = {
         // 基础请求头
