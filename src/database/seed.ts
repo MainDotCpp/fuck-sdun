@@ -3,10 +3,13 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import type { DeviceProfile } from '../types/index.js';
+import type { DeviceProfile } from '../types/index';
+import { logger } from '../utils/logger';
 import iphone from '../data/ios/iphone.json' with { type: 'json' };
 import samsungGalaxyS23 from '../data/android/samsung-galaxy-s23.json' with { type: 'json' };
 import googlePixel7 from '../data/android/google-pixel-7.json' with { type: 'json' };
+
+const MODULE_NAME = 'Seed';
 
 // 检查是否有 iphone13.json
 let iphone13: DeviceProfile | null = null;
@@ -22,7 +25,7 @@ try {
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('开始迁移 JSON 配置到数据库（单表设计）...');
+  logger.info(MODULE_NAME, '开始迁移 JSON 配置到数据库（单表设计）...');
 
   // 准备要迁移的设备列表
   const devices: DeviceProfile[] = [
@@ -51,7 +54,7 @@ async function main() {
       });
 
       if (existing) {
-        console.log(`跳过已存在的设备: ${device.name} (${device.platform})`);
+        logger.info(MODULE_NAME, `跳过已存在的设备: ${device.name} (${device.platform})`);
         skipped++;
         continue;
       }
@@ -95,23 +98,24 @@ async function main() {
         },
       });
 
-      console.log(
+      logger.info(
+        MODULE_NAME,
         `导入设备: ${device.name} (${device.platform}) -> ID: ${result.id}`
       );
       imported++;
     } catch (error) {
-      console.error(`导入设备失败: ${device.name}`, error);
+      logger.error(MODULE_NAME, `导入设备失败: ${device.name}`, error);
     }
   }
 
-  console.log(`\n迁移完成！`);
-  console.log(`- 导入: ${imported} 个设备`);
-  console.log(`- 跳过: ${skipped} 个设备`);
+  logger.info(MODULE_NAME, `\n迁移完成！`);
+  logger.info(MODULE_NAME, `- 导入: ${imported} 个设备`);
+  logger.info(MODULE_NAME, `- 跳过: ${skipped} 个设备`);
 }
 
 main()
   .catch((e) => {
-    console.error('迁移失败:', e);
+    logger.error(MODULE_NAME, '迁移失败', e);
     process.exit(1);
   })
   .finally(async () => {

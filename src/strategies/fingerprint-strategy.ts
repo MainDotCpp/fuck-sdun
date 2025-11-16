@@ -2,8 +2,8 @@
  * 指纹策略接口
  */
 
-import type { DeviceProfile } from '../types/index.js';
-import type { LocaleOptions } from '../injectors/fingerprint-injector.js';
+import type { DeviceProfile } from '../types/index';
+import type { LocaleOptions } from '../injectors/fingerprint-injector';
 
 /**
  * 指纹策略接口

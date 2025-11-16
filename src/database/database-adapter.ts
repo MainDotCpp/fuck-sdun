@@ -3,8 +3,11 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import type { DeviceProfile, Platform } from '../types/index.js';
-import { validateDeviceProfile } from '../types/index.js';
+import type { DeviceProfile, Platform } from '../types/index';
+import { validateDeviceProfile } from '../types/index';
+import { logger } from '../utils/logger';
+
+const MODULE_NAME = 'DatabaseAdapter';
 
 export class DatabaseAdapter {
   private prisma: PrismaClient;
@@ -94,12 +97,12 @@ export class DatabaseAdapter {
     if (device.userAgentData) {
       try {
         userAgentData = JSON.parse(device.userAgentData);
-        console.log('[DatabaseAdapter] Parsed userAgentData:', JSON.stringify(userAgentData, null, 2));
+        logger.debug(MODULE_NAME, 'Parsed userAgentData:', JSON.stringify(userAgentData, null, 2));
       } catch (error) {
-        console.warn('[DatabaseAdapter] Failed to parse userAgentData:', error);
+        logger.warn(MODULE_NAME, 'Failed to parse userAgentData', error);
       }
     } else {
-      console.log('[DatabaseAdapter] No userAgentData in database record');
+      logger.debug(MODULE_NAME, 'No userAgentData in database record');
     }
     
     return {

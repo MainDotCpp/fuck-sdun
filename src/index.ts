@@ -3,9 +3,9 @@
  */
 
 import type { Browser, BrowserContext, Page } from 'playwright';
-import { DeviceManager } from './managers/device-manager.js';
-import { EngineAdapter } from './adapters/engine-adapter.js';
-import { ContextConfigurator, type BrowserOptions } from './configurators/context-configurator.js';
+import { DeviceManager } from './managers/device-manager';
+import { EngineAdapter } from './adapters/engine-adapter';
+import { ContextConfigurator, type BrowserOptions } from './configurators/context-configurator';
 
 export interface MobileBrowserResult {
   browser: Browser;
@@ -53,13 +53,13 @@ export async function createMobileBrowser(
 }
 
 // 导出类型和类
-export type { DeviceProfile, Platform } from './types/index.js';
-export { DeviceManager } from './managers/device-manager.js';
-export { EngineAdapter } from './adapters/engine-adapter.js';
-export { ContextConfigurator } from './configurators/context-configurator.js';
-export { FingerprintInjector } from './injectors/fingerprint-injector.js';
-export { IOSFingerprintStrategy } from './strategies/ios-strategy.js';
-export { AndroidFingerprintStrategy } from './strategies/android-strategy.js';
+export type { DeviceProfile, Platform } from './types/index';
+export { DeviceManager } from './managers/device-manager';
+export { EngineAdapter } from './adapters/engine-adapter';
+export { ContextConfigurator } from './configurators/context-configurator';
+export { FingerprintInjector } from './injectors/fingerprint-injector';
+export { IOSFingerprintStrategy } from './strategies/ios-strategy';
+export { AndroidFingerprintStrategy } from './strategies/android-strategy';
 
 // 导出设备数据
 export {
@@ -67,8 +67,8 @@ export {
   getDeviceById,
   getDevicesByPlatform,
   closeDatabase,
-} from './data/index.js';
+} from './data/index';
 
 // 导出数据库适配器
-export { DatabaseAdapter } from './database/database-adapter.js';
+export { DatabaseAdapter } from './database/database-adapter';
 

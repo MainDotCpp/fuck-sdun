@@ -2,14 +2,14 @@
  * 设备管理器
  */
 
-import type { DeviceProfile, Platform } from '../types/index.js';
-import { validateDeviceProfile } from '../types/index.js';
+import type { DeviceProfile, Platform } from '../types/index';
+import { validateDeviceProfile } from '../types/index';
 import {
   getAllDevices,
   getDeviceById,
   getDevicesByPlatform,
   getValidatedDevice,
-} from '../data/index.js';
+} from '../data/index';
 
 export class DeviceManager {
   /**

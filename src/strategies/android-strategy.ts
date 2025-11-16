@@ -2,9 +2,9 @@
  * Android 指纹策略实现
  */
 
-import type { DeviceProfile } from '../types/index.js';
-import type { FingerprintStrategy } from './fingerprint-strategy.js';
-import type { LocaleOptions } from '../injectors/fingerprint-injector.js';
+import type { DeviceProfile } from '../types/index';
+import type { FingerprintStrategy } from './fingerprint-strategy';
+import type { LocaleOptions } from '../injectors/fingerprint-injector';
 
 export class AndroidFingerprintStrategy implements FingerprintStrategy {
   /**
@@ -243,8 +243,8 @@ export class AndroidFingerprintStrategy implements FingerprintStrategy {
     if (context) {
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
-      // 添加微小的噪声以保持一致性
-      const noise = ${fingerprint.canvasNoise || 0};
+      // 随机生成噪声值（每次调用保持一致）
+      const noise = ${Math.random()};
       for (let i = 0; i < data.length; i += 4) {
         data[i] = Math.min(255, Math.max(0, data[i] + noise * 0.1));
       }
@@ -259,7 +259,8 @@ export class AndroidFingerprintStrategy implements FingerprintStrategy {
     if (context) {
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
-      const noise = ${fingerprint.canvasNoise || 0};
+      // 随机生成噪声值（每次调用保持一致）
+      const noise = ${Math.random()};
       for (let i = 0; i < data.length; i += 4) {
         data[i] = Math.min(255, Math.max(0, data[i] + noise * 0.1));
       }
@@ -275,7 +276,8 @@ export class AndroidFingerprintStrategy implements FingerprintStrategy {
     const getFloatFrequencyData = analyser.getFloatFrequencyData;
     analyser.getFloatFrequencyData = function(array) {
       getFloatFrequencyData.call(this, array);
-      const seed = ${fingerprint.audioContextSeed || 0};
+      // 随机生成种子值（每次调用保持一致）
+      const seed = ${Math.random()};
       for (let i = 0; i < array.length; i++) {
         array[i] += seed * 0.0001;
       }

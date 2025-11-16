@@ -2,8 +2,8 @@
  * 类型定义导出
  */
 
-export type { Platform, BrowserEngine } from './platform.js';
-export { getEngineForPlatform, isValidPlatform } from './platform.js';
+export type { Platform, BrowserEngine } from './platform';
+export { getEngineForPlatform, isValidPlatform } from './platform';
 
 export type {
   DeviceProfile,
@@ -11,6 +11,6 @@ export type {
   SystemSpec,
   BrowserSpec,
   FingerprintSpec,
-} from './device.js';
-export { validateDeviceProfile } from './device.js';
+} from './device';
+export { validateDeviceProfile } from './device';
 

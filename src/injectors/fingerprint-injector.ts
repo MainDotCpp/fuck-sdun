@@ -3,10 +3,10 @@
  */
 
 import type { BrowserContext } from 'playwright';
-import type { DeviceProfile } from '../types/index.js';
-import { IOSFingerprintStrategy } from '../strategies/ios-strategy.js';
-import { AndroidFingerprintStrategy } from '../strategies/android-strategy.js';
-import type { FingerprintStrategy } from '../strategies/fingerprint-strategy.js';
+import type { DeviceProfile } from '../types/index';
+import { IOSFingerprintStrategy } from '../strategies/ios-strategy';
+import { AndroidFingerprintStrategy } from '../strategies/android-strategy';
+import type { FingerprintStrategy } from '../strategies/fingerprint-strategy';
 
 export interface LocaleOptions {
   /** 时区 ID */

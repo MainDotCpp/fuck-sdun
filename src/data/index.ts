@@ -2,9 +2,9 @@
  * 设备参数库导出和查询（使用 Prisma 数据库）
  */
 
-import type { DeviceProfile, Platform } from '../types/index.js';
-import { validateDeviceProfile } from '../types/index.js';
-import { DatabaseAdapter } from '../database/database-adapter.js';
+import type { DeviceProfile, Platform } from '../types/index';
+import { validateDeviceProfile } from '../types/index';
+import { DatabaseAdapter } from '../database/database-adapter';
 
 // 创建数据库适配器实例（单例模式）
 let dbAdapter: DatabaseAdapter | null = null;

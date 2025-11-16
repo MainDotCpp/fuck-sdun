@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/yy/Project/Haishi/fuck-sdun/app/layout.tsx"],"sourcesContent":["import type { Metadata } from 'next';\nimport { Toaster } from 'sonner';\nimport './globals.css';\n\nexport const metadata: Metadata = {\n  title: '移动设备浏览器模拟器',\n  description: 'Playwright 移动设备指纹模拟工具',\n};\n\nexport default function RootLayout({\n  children,\n}: {\n  children: React.ReactNode;\n}) {\n  return (\n    <html lang=\"zh-CN\">\n      <body>\n        {children}\n        <Toaster />\n      </body>\n    </html>\n  );\n}\n\n"],"names":[],"mappings":";;;;;;;;;;;;;;;AAIO,MAAM,WAAqB;IAChC,OAAO;IACP,aAAa;AACf;AAEe,SAAS,WAAW,EACjC,QAAQ,EAGT;IACC,qBACE,6WAAC;QAAK,MAAK;kBACT,cAAA,6WAAC;;gBACE;8BACD,6WAAC;;;;;;;;;;;;;;;;AAIT"}},
+    {"offset": {"line": 50, "column": 0}, "map": {"version":3,"sources":["file:///Users/yy/Project/Haishi/fuck-sdun/node_modules/.pnpm/next%4016.0.3_react-dom%4019.2.0_react%4019.2.0__react%4019.2.0/node_modules/next/src/server/route-modules/app-page/vendored/rsc/react-jsx-dev-runtime.ts"],"sourcesContent":["module.exports = (\n  require('../../module.compiled') as typeof import('../../module.compiled')\n).vendored['react-rsc']!.ReactJsxDevRuntime\n"],"names":["module","exports","require","vendored","ReactJsxDevRuntime"],"mappings":"AAAAA,OAAOC,OAAO,GACZC,QAAQ,uMACRC,QAAQ,CAAC,YAAY,CAAEC,kBAAkB","ignoreList":[0]}}]
+}

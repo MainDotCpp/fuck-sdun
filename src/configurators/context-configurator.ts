@@ -3,8 +3,8 @@
  */
 
 import type { Browser, BrowserContext, Page, BrowserType } from 'playwright';
-import type { DeviceProfile } from '../types/index.js';
-import { FingerprintInjector } from '../injectors/fingerprint-injector.js';
+import type { DeviceProfile } from '../types/index';
+import { FingerprintInjector } from '../injectors/fingerprint-injector';
 
 export interface BrowserOptions {
   /** 是否无头模式 */

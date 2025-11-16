@@ -2,7 +2,7 @@
  * 设备配置类型定义
  */
 
-import type { Platform } from './platform.js';
+import type { Platform } from './platform';
 
 /**
  * 硬件规格

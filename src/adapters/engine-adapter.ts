@@ -4,8 +4,8 @@
 
 import type { Browser, BrowserType, LaunchOptions } from 'playwright';
 import { chromium, webkit } from 'playwright';
-import type { Platform } from '../types/index.js';
-import { getEngineForPlatform } from '../types/index.js';
+import type { Platform } from '../types/index';
+import { getEngineForPlatform } from '../types/index';
 
 export class EngineAdapter {
   /**
