@@ -1,0 +1,12 @@
+serverAddr = "45.78.61.23"
+serverPort = 7000
+auth.method = "token"
+auth.token = "12345678"
+
+[[proxies]]
+name = "操翻圣盾"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 3000
+remotePort = 9292
+

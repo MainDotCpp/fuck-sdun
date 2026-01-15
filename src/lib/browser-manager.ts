@@ -249,7 +249,7 @@ class BrowserManager {
       // 配置浏览器选项
       // WebKit (iOS) 不支持 'new' headless 模式，只能使用 true/false
       // Chromium (Android) 支持 'new' headless 模式，更难被检测
-      const headlessMode = isWebKit ? false : 'new'; // WebKit 使用 true，Chromium 使用 'new'
+      const headlessMode = isWebKit ? true : 'new'; // WebKit 使用 true，Chromium 使用 'new'
       const browserOptions: BrowserOptions = {
         headless: headlessMode,
         launchOptions: {

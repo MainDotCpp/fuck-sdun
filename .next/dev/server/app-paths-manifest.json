@@ -1,8 +1,4 @@
 {
-  "/OmxoUR/page": "app/OmxoUR/page.js",
-  "/api/browser/start/route": "app/api/browser/start/route.js",
-  "/api/detect/save/route": "app/api/detect/save/route.js",
-  "/api/devices/[id]/route": "app/api/devices/[id]/route.js",
   "/api/devices/route": "app/api/devices/route.js",
   "/dev/page": "app/dev/page.js"
 }
