@@ -7,6 +7,7 @@ interface BrowserStatusProps {
   status: {
     isRunning: boolean;
     deviceName?: string;
+    group?: string;
     startedAt?: string;
   };
 }

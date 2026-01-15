@@ -11,11 +11,13 @@ const MODULE_NAME = 'API:Devices';
 
 export async function GET(request: NextRequest) {
   const db = new DatabaseAdapter();
+  const { searchParams } = new URL(request.url);
+  const group = searchParams.get('group') || undefined;
   
   try {
-    const devices = await db.getAllDevices();
+    const devices = await db.getAllDevices(group);
     
-    logger.info(MODULE_NAME, `获取设备列表，共 ${devices.length} 个设备`);
+    logger.info(MODULE_NAME, `获取设备列表${group ? ` (group: ${group})` : ''}，共 ${devices.length} 个设备`);
     
     return NextResponse.json({
       success: true,

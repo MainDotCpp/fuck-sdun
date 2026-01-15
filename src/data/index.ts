@@ -32,17 +32,18 @@ export async function getDeviceById(
 /**
  * 获取所有设备配置
  */
-export async function getAllDevices(): Promise<DeviceProfile[]> {
-  return await getDbAdapter().getAllDevices();
+export async function getAllDevices(group?: string): Promise<DeviceProfile[]> {
+  return await getDbAdapter().getAllDevices(group);
 }
 
 /**
  * 根据平台获取设备配置列表
  */
 export async function getDevicesByPlatform(
-  platform: Platform
+  platform: Platform,
+  group?: string
 ): Promise<DeviceProfile[]> {
-  return await getDbAdapter().getDevicesByPlatform(platform);
+  return await getDbAdapter().getDevicesByPlatform(platform, group);
 }
 
 /**

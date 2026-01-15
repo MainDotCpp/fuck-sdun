@@ -104,6 +104,8 @@ export interface DeviceProfile {
   name: string;
   /** 平台类型 */
   platform: Platform;
+  /** 设备分组 */
+  group?: string;
   /** 硬件参数 */
   hardware: HardwareSpec;
   /** 系统参数 */

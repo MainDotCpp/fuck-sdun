@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     // 解析请求体
     const body = await request.json();
-    const { url, referer, languageRotation } = body;
+    const { url, referer, languageRotation, group } = body;
 
     // 验证参数
     if (!url) {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 无论是否能获取到锁，都先保存目标网址（用于限制多人使用：后到达的请求会覆盖先到达的请求）
-    browserManager.setPendingRequest(url, referer, languageRotation);
+    browserManager.setPendingRequest(url, referer, languageRotation, group);
 
     // 尝试获取锁（同步操作）
     // 如果获取不到锁，直接返回错误，不启动浏览器

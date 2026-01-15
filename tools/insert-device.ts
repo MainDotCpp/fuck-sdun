@@ -29,9 +29,9 @@ async function insertDevice(base64: string) {
     validateDeviceProfile(deviceConfig);
 
     // 检查设备是否已存在
-    const existing = await db.getDeviceByName(deviceConfig.name, deviceConfig.platform);
+    const existing = await db.getDeviceByName(deviceConfig.name, deviceConfig.platform, deviceConfig.group || 'default');
     if (existing) {
-      console.log(`⚠️  设备 "${deviceConfig.name}" (${deviceConfig.platform}) 已存在`);
+      console.log(`⚠️  设备 "${deviceConfig.name}" (${deviceConfig.platform}, group: ${deviceConfig.group || 'default'}) 已存在`);
       console.log(`   设备 ID: ${existing.id}`);
       return;
     }

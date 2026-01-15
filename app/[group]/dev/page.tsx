@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,9 @@ import type { DeviceProfile } from '@/src/types/device';
 const ITEMS_PER_PAGE = 10;
 
 export default function DevicesPage() {
+  const params = useParams();
+  const group = (params?.group as string) || 'all';
+
   const [devices, setDevices] = useState<DeviceProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingDevice, setViewingDevice] = useState<DeviceProfile | null>(null);
@@ -28,7 +32,8 @@ export default function DevicesPage() {
   const loadDevices = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/devices');
+      const url = group === 'all' ? '/api/devices' : `/api/devices?group=${group}`;
+      const response = await fetch(url);
       const result = await response.json();
       
       if (result.success) {
@@ -45,7 +50,7 @@ export default function DevicesPage() {
 
   useEffect(() => {
     loadDevices();
-  }, []);
+  }, [group]);
 
   // 删除设备
   const handleDelete = async (id: string) => {

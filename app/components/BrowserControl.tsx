@@ -1,12 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
 export default function BrowserControl() {
+  const params = useParams();
+  const group = (params?.group as string) || 'default';
+  
   const [url, setUrl] = useState('');
   const [referer, setReferer] = useState('');
   const [loading, setLoading] = useState(false);
@@ -37,7 +41,7 @@ export default function BrowserControl() {
         body: JSON.stringify({
           url: url.trim(),
           referer: referer.trim(),
-          languageRotation: ['ja-JP', 'ja','ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7'],
+          group: group,
         }),
       });
 

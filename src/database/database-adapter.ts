@@ -39,17 +39,19 @@ export class DatabaseAdapter {
   }
 
   /**
-   * 根据名称和平台获取设备配置
+   * 根据名称、平台和组获取设备配置
    */
   async getDeviceByName(
     name: string,
-    platform: Platform
+    platform: Platform,
+    group: string = 'default'
   ): Promise<DeviceProfile | undefined> {
     const device = await this.prisma.device.findUnique({
       where: {
-        name_platform: {
+        name_platform_group: {
           name,
           platform,
+          group,
         },
       },
     });
@@ -64,8 +66,9 @@ export class DatabaseAdapter {
   /**
    * 获取所有设备配置
    */
-  async getAllDevices(): Promise<DeviceProfile[]> {
+  async getAllDevices(group?: string): Promise<DeviceProfile[]> {
     const devices = await this.prisma.device.findMany({
+      where: group ? { group } : {},
       orderBy: {
         id: 'asc',
       },
@@ -75,11 +78,14 @@ export class DatabaseAdapter {
   }
 
   /**
-   * 根据平台获取设备配置列表
+   * 根据平台和组获取设备配置列表
    */
-  async getDevicesByPlatform(platform: Platform): Promise<DeviceProfile[]> {
+  async getDevicesByPlatform(platform: Platform, group?: string): Promise<DeviceProfile[]> {
     const devices = await this.prisma.device.findMany({
-      where: { platform },
+      where: { 
+        platform,
+        ...(group ? { group } : {})
+      },
       orderBy: {
         id: 'asc',
       },
@@ -109,6 +115,7 @@ export class DatabaseAdapter {
       id: device.id.toString(), // 转换为字符串以保持 API 兼容性
       name: device.name,
       platform: device.platform as Platform,
+      group: device.group,
       hardware: {
         cpuCores: device.cpuCores,
         memory: device.memory ?? undefined,
@@ -152,6 +159,7 @@ export class DatabaseAdapter {
       data: {
         name: device.name,
         platform: device.platform,
+        group: device.group || 'default',
         // 硬件参数
         cpuCores: device.hardware.cpuCores,
         memory: device.hardware.memory ?? null,
@@ -198,6 +206,7 @@ export class DatabaseAdapter {
       data: {
         name: device.name,
         platform: device.platform,
+        group: device.group || 'default',
         // 硬件参数
         cpuCores: device.hardware.cpuCores,
         memory: device.hardware.memory ?? null,

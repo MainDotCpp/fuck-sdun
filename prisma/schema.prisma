@@ -13,6 +13,7 @@ model Device {
   id        Int      @id @default(autoincrement())
   name      String
   platform  String   // 'ios' | 'android'
+  group     String   @default("default") // 设备的组，用于分类管理
   
   // 硬件参数
   cpuCores          Int
@@ -49,8 +50,9 @@ model Device {
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  @@unique([name, platform])
+  @@unique([name, platform, group])
   @@index([platform])
   @@index([name])
+  @@index([group])
   @@map("devices")
 }

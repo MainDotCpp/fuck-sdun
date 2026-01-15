@@ -1,14 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 
 export default function DetectPage() {
+  const params = useParams();
   const [status, setStatus] = useState('加载中...');
 
   useEffect(() => {
     // 提取设备信息并保存
     const extractAndSave = async () => {
       try {
+        // 从路由参数获取分组
+        const group = (params?.group as string) || 'default';
+
         // 检测平台
         const detectPlatform = () => {
           const ua = navigator.userAgent;
@@ -219,6 +224,7 @@ export default function DetectPage() {
         const deviceConfig = {
           name: deviceName,
           platform: platform,
+          group: group,
           hardware: {
             cpuCores: navigator.hardwareConcurrency,
             memory: (navigator as any).deviceMemory || (platform === 'ios' ? undefined : 8),

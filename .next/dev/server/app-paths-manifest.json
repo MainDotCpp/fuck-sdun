@@ -1,4 +1,12 @@
 {
+  "/OmxoUR/page": "app/OmxoUR/page.js",
+  "/[group]/OmxoUR/page": "app/[group]/OmxoUR/page.js",
+  "/[group]/det/page": "app/[group]/det/page.js",
+  "/[group]/dev/page": "app/[group]/dev/page.js",
+  "/[group]/page": "app/[group]/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/detect/save/route": "app/api/detect/save/route.js",
+  "/api/devices/[id]/route": "app/api/devices/[id]/route.js",
   "/api/devices/route": "app/api/devices/route.js",
-  "/dev/page": "app/dev/page.js"
+  "/page": "app/page.js"
 }

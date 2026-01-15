@@ -1,6 +1,6 @@
 /**
  * 922proxy 代理配置
- * 硬编码在程序中，国家固定为日本，城市随机选择
+ * 支持多分组配置
  */
 
 /**
@@ -30,36 +30,72 @@ export const JAPAN_CITIES = [
 ];
 
 /**
- * 固定代理配置（格式：host:port:username:password）
- * 如果设置了此值，将直接使用此代理，不再调用 API
- * 设置为空字符串 '' 则禁用固定代理，使用 API 获取
+ * 加拿大主要城市列表
  */
-export const FIXED_PROXY = 'as.proxys5.net:6200:30356354-zone-custom-region-JP:nRNz4Tsx';
+export const CANADA_CITIES = [
+  'Toronto',
+  'Vancouver',
+  'Montreal',
+  'Ottawa',
+  'Calgary',
+  'Edmonton',
+  'Quebec City',
+  'Winnipeg',
+  'Hamilton',
+  'Kitchener',
+];
 
 /**
- * 922proxy API 配置
- * 请在此处配置您的 922proxy 凭证（仅在未设置 FIXED_PROXY 时使用）
+ * 分组代理配置
  */
-export const PROXY_CONFIG = {
-  /** API Token */
-  token: '49d8d3b0-a8a7-419e-ada4-8afd27aecb9f',    
-  /** API Key */
-  key: 'sLPLLr5nhDPl',
-  /** 用户名 */
-  username: 'shengdunapi',
-  /** 主机名：端口 */
-  hostname: 'Singapore',
-  /** API 地址 */
-  apiUrl: 'https://docapi.922proxy.com/api/proxy/isp_generate',
-  /** 国家（固定为日本） */
-  country: 'Japan',
+export const PROXY_GROUPS: Record<string, {
+  fixedProxy?: string;
+  languages?: string[]; // 分组特定的语言轮询列表
+  config?: {
+    token: string;
+    key: string;
+    username: string;
+    hostname: string;
+    apiUrl?: string;
+    country: string;
+    cities?: string[];
+  }
+}> = {
+  'default': {
+    fixedProxy: 'as.proxys5.net:6200:30356354-zone-custom-region-JP:nRNz4Tsx',
+    languages: ['ja-JP', 'ja', 'en-US', 'en']
+  },
+  'japan-google': {
+    fixedProxy: 'as.proxys5.net:6200:30356354-zone-custom-region-JP:nRNz4Tsx',
+    languages: ['ja-JP', 'ja', 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7']
+  },
+  'canada-facebook': {
+    fixedProxy: 'ea.proxys5.net:6200:30356354:nRNz4Tsx', 
+    languages: ['en-CA', 'en-US', 'en', 'fr-CA', 'fr'],
+  }
 };
 
 /**
- * 随机选择一个日本城市
+ * 随机选择一个城市
  */
+export function getRandomCity(group: string = 'default'): string {
+  const groupConfig = PROXY_GROUPS[group] || PROXY_GROUPS['default'];
+  const cities = groupConfig.config?.cities || JAPAN_CITIES;
+  const randomIndex = Math.floor(Math.random() * cities.length);
+  return cities[randomIndex];
+}
+
+/**
+ * 获取分组配置
+ */
+export function getProxyConfig(group: string = 'default') {
+  return PROXY_GROUPS[group] || PROXY_GROUPS['default'];
+}
+
+// 为了向下兼容，保留旧的导出（指向 default 分组）
+export const FIXED_PROXY = PROXY_GROUPS['default'].fixedProxy;
+export const PROXY_CONFIG = PROXY_GROUPS['default'].config;
 export function getRandomJapanCity(): string {
-  const randomIndex = Math.floor(Math.random() * JAPAN_CITIES.length);
-  return JAPAN_CITIES[randomIndex];
+  return getRandomCity('default');
 }
 

@@ -13,7 +13,7 @@ const MODULE_NAME = 'API:Detect';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, platform, hardware, system, browser, fingerprint } = body;
+    const { name, platform, group, hardware, system, browser, fingerprint } = body;
 
     // 验证必填字段
     if (!name || !platform || !hardware || !system || !browser || !fingerprint) {
@@ -44,9 +44,9 @@ export async function POST(request: NextRequest) {
 
     try {
       // 检查是否已存在同名设备
-      const existingDevice = await db.getDeviceByName(name, platform as Platform);
+      const existingDevice = await db.getDeviceByName(name, platform as Platform, group || 'default');
       if (existingDevice) {
-        logger.info(MODULE_NAME, `设备已存在: ${name}`, { platform });
+        logger.info(MODULE_NAME, `设备已存在: ${name} (group: ${group || 'default'})`, { platform });
         return NextResponse.json({
           success: true,
           message: '设备已存在',
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       const deviceProfile = {
         name,
         platform: platform as Platform,
+        group: group || 'default',
         hardware: {
           cpuCores: hardware.cpuCores || 4,
           memory: hardware.memory,

@@ -4,7 +4,7 @@
  */
 
 import { logger } from '../utils/logger';
-import { PROXY_CONFIG, getRandomJapanCity } from '../config/proxy-config';
+import { PROXY_GROUPS, getRandomCity } from '../config/proxy-config';
 
 const MODULE_NAME = 'ProxyService';
 
@@ -47,41 +47,56 @@ export class ProxyService {
   }
 
   /**
-   * 创建默认配置的 ProxyService 实例（日本+随机城市）
+   * 创建指定分组的 ProxyService 实例
    */
-  static createDefault(): ProxyService | null {
-    // 检查配置是否完整（检查是否为默认占位符值）
-    const token = PROXY_CONFIG.token as string;
-    const key = PROXY_CONFIG.key as string;
-    const username = PROXY_CONFIG.username as string;
-    
-    if (
-      token === 'your_token_here' ||
-      key === 'your_key_here' ||
-      username === 'your_username_here' ||
-      !token ||
-      !key ||
-      !username
-    ) {
-      logger.warn(
+  static createForGroup(group: string = 'default'): ProxyService | null {
+    const groupConfig = PROXY_GROUPS[group] || PROXY_GROUPS['default'];
+    const config = groupConfig.config;
+
+    // 检查配置是否存在
+    if (!config) {
+      logger.debug(
         MODULE_NAME,
-        '922proxy 配置未设置，请在 src/config/proxy-config.ts 中配置 token、key 和 username'
+        `分组 "${group}" 未配置 API (config 字段缺失)，将无法使用 API 获取代理`
       );
       return null;
     }
 
-    // 随机选择一个日本城市
-    const city = getRandomJapanCity();
+    // 检查配置是否完整
+    if (
+      config.token === 'your_token_here' ||
+      config.key === 'your_key_here' ||
+      config.username === 'your_username_here' ||
+      !config.token ||
+      !config.key ||
+      !config.username
+    ) {
+      logger.warn(
+        MODULE_NAME,
+        `分组 "${group}" 的 922proxy 配置未设置或不完整`
+      );
+      return null;
+    }
+
+    // 随机选择一个城市
+    const city = getRandomCity(group);
 
     return new ProxyService({
-      token: PROXY_CONFIG.token,
-      key: PROXY_CONFIG.key,
-      username: PROXY_CONFIG.username,
-      country: PROXY_CONFIG.country,
+      token: config.token,
+      key: config.key,
+      username: config.username,
+      country: config.country,
       city,
-      hostname: PROXY_CONFIG.hostname,
-      apiUrl: PROXY_CONFIG.apiUrl,
+      hostname: config.hostname,
+      apiUrl: config.apiUrl,
     });
+  }
+
+  /**
+   * 创建默认配置的 ProxyService 实例（日本+随机城市）
+   */
+  static createDefault(): ProxyService | null {
+    return this.createForGroup('default');
   }
 
   /**

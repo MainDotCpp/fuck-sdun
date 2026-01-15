@@ -12,11 +12,12 @@ import { ProxyService } from '../services/proxy-service';
 
 const MODULE_NAME = 'BrowserManager';
 
-interface BrowserSession {
+  interface BrowserSession {
   browser: Browser;
   page: Page;
   deviceId: string;
   deviceName: string;
+  group?: string;
   startedAt: Date;
 }
 
@@ -31,6 +32,8 @@ class BrowserManager {
   private pendingReferer: string | undefined = undefined;
   // 待使用的语言轮询列表（用于限制多人使用）
   private pendingLanguageRotation: string[] | undefined = undefined;
+  // 待使用的分组（用于限制多人使用）
+  private pendingGroup: string | undefined = undefined;
 
   private constructor() {
     this.db = new DatabaseAdapter();
@@ -90,12 +93,14 @@ class BrowserManager {
    * @param url 目标网址
    * @param referer Referer 头（可选）
    * @param languageRotation 语言轮询列表（可选）
+   * @param group 分组（可选）
    */
-  setPendingRequest(url: string, referer?: string, languageRotation?: string[]): void {
+  setPendingRequest(url: string, referer?: string, languageRotation?: string[], group?: string): void {
     this.pendingUrl = url;
     this.pendingReferer = referer;
     this.pendingLanguageRotation = languageRotation;
-    logger.info(MODULE_NAME, `已更新待访问网址: ${url}${referer ? `, Referer: ${referer}` : ''}`);
+    this.pendingGroup = group;
+    logger.info(MODULE_NAME, `已更新待访问网址: ${url}${referer ? `, Referer: ${referer}` : ''}${group ? `, Group: ${group}` : ''}`);
   }
 
   /**
@@ -106,6 +111,7 @@ class BrowserManager {
     url: string;
     referer?: string;
     languageRotation?: string[];
+    group?: string;
   } | null {
     if (!this.pendingUrl) {
       return null;
@@ -114,11 +120,13 @@ class BrowserManager {
       url: this.pendingUrl,
       referer: this.pendingReferer,
       languageRotation: this.pendingLanguageRotation,
+      group: this.pendingGroup,
     };
     // 清除待访问信息
     this.pendingUrl = null;
     this.pendingReferer = undefined;
     this.pendingLanguageRotation = undefined;
+    this.pendingGroup = undefined;
     return result;
   }
 
@@ -132,10 +140,10 @@ class BrowserManager {
   /**
    * 从数据库随机选择一个 iOS 设备
    */
-  private async getRandomDevice(): Promise<{ id: string; name: string }> {
-    const devices = await this.db.getDevicesByPlatform('ios');
+  private async getRandomDevice(group?: string): Promise<{ id: string; name: string }> {
+    const devices = await this.db.getDevicesByPlatform('ios', group);
     if (devices.length === 0) {
-      throw new Error('数据库中没有可用的 iOS 设备');
+      throw new Error(`数据库中没有可用的 iOS 设备${group ? ` (group: ${group})` : ''}`);
     }
     const randomIndex = Math.floor(Math.random() * devices.length);
     const device = devices[randomIndex];
@@ -195,22 +203,25 @@ class BrowserManager {
       const actualUrl = pendingRequest.url;
       const actualReferer = pendingRequest.referer;
       const actualLanguageRotation = pendingRequest.languageRotation;
+      const actualGroup = pendingRequest.group;
 
       // 获取代理配置
-      // 优先使用固定代理，如果未设置则从 922proxy API 获取
+      // 优先使用分组固定代理，如果未设置则从 922proxy API 获取
       let proxyString: string | undefined;
 
-      // 检查是否配置了固定代理
-      const { FIXED_PROXY } = await import('../config/proxy-config');
-      if (FIXED_PROXY) {
-        proxyString = FIXED_PROXY;
-        logger.info(MODULE_NAME, `使用固定代理: ${FIXED_PROXY.split(':')[0]}:${FIXED_PROXY.split(':')[1]}`);
+      // 获取分组代理配置
+      const { getProxyConfig } = await import('../config/proxy-config');
+      const groupProxyConfig = getProxyConfig(actualGroup);
+      
+      if (groupProxyConfig.fixedProxy) {
+        proxyString = groupProxyConfig.fixedProxy;
+        logger.info(MODULE_NAME, `使用分组 "${actualGroup || 'default'}" 的固定代理: ${proxyString.split(':')[0]}:${proxyString.split(':')[1]}`);
       } else {
-        // 从 922proxy 获取代理（日本+随机城市）
+        // 从 922proxy 获取代理
         // 如果获取失败，直接终止任务，不启动浏览器
-        const proxyService = ProxyService.createDefault();
+        const proxyService = ProxyService.createForGroup(actualGroup);
         if (!proxyService) {
-          const errorMsg = '未配置固定代理，且 922proxy 配置未设置。请在 src/config/proxy-config.ts 中配置 FIXED_PROXY 或 token、key 和 username';
+          const errorMsg = `分组 "${actualGroup || 'default'}" 未配置固定代理，且 922proxy 配置未设置。`;
           logger.error(MODULE_NAME, errorMsg);
           throw new Error(errorMsg);
         }
@@ -232,7 +243,7 @@ class BrowserManager {
       }
 
       // 随机选择设备
-      const { id: deviceId, name: deviceName } = await this.getRandomDevice();
+      const { id: deviceId, name: deviceName } = await this.getRandomDevice(actualGroup);
 
       // 获取设备平台以确定浏览器引擎
       const device = await this.db.getDeviceById(parseInt(deviceId));
@@ -242,8 +253,10 @@ class BrowserManager {
       const platform = device.platform;
       const isWebKit = platform === 'ios'; // iOS 使用 WebKit，Android 使用 Chromium
 
-      // 准备语言轮询列表（使用最新的待访问请求中的语言轮询列表）
-      const languages = actualLanguageRotation || languageRotation || ['ja-JP', 'ja'];
+      // 准备语言轮询列表
+      // 优先使用请求中的语言设置，否则使用分组配置中的语言设置，最后 fallback 到默认值
+      const groupLanguages = groupProxyConfig.languages || ['ja-JP', 'ja'];
+      const languages = actualLanguageRotation || languageRotation || groupLanguages;
       const selectedLanguage = this.getRandomLanguage(languages);
 
       // 配置浏览器选项
@@ -511,6 +524,7 @@ class BrowserManager {
         page,
         deviceId,
         deviceName,
+        group: actualGroup,
         startedAt: new Date(),
       };
 
@@ -770,12 +784,14 @@ class BrowserManager {
   getStatus(): {
     isRunning: boolean;
     deviceName?: string;
+    group?: string;
     startedAt?: Date;
   } {
     if (this.currentSession) {
       return {
         isRunning: true,
         deviceName: this.currentSession.deviceName,
+        group: this.currentSession.group,
         startedAt: this.currentSession.startedAt,
       };
     }

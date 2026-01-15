@@ -22,15 +22,15 @@ export class DeviceManager {
   /**
    * 获取所有设备配置
    */
-  async getAllDevices(): Promise<DeviceProfile[]> {
-    return await getAllDevices();
+  async getAllDevices(group?: string): Promise<DeviceProfile[]> {
+    return await getAllDevices(group);
   }
 
   /**
    * 根据平台获取设备配置列表
    */
-  async getDevicesByPlatform(platform: Platform): Promise<DeviceProfile[]> {
-    return await getDevicesByPlatform(platform);
+  async getDevicesByPlatform(platform: Platform, group?: string): Promise<DeviceProfile[]> {
+    return await getDevicesByPlatform(platform, group);
   }
 
   /**
