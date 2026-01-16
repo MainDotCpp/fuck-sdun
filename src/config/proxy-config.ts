@@ -70,7 +70,7 @@ export const PROXY_GROUPS: Record<string, {
     languages: ['ja-JP', 'ja', 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7']
   },
   'canada-facebook': {
-    fixedProxy: 'ea.proxys5.net:6200:30356354:nRNz4Tsx', 
+    fixedProxy: 'ea.proxys5.net:6200:30356354-zone-custom-region-CA:nRNz4Tsx', 
     languages: ['en-CA', 'en-US', 'en', 'fr-CA', 'fr'],
   }
 };
