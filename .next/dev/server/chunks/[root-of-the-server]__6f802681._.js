@@ -265,13 +265,14 @@ class DatabaseAdapter {
         return this.buildDeviceProfile(device);
     }
     /**
-   * 根据名称和平台获取设备配置
-   */ async getDeviceByName(name, platform) {
+   * 根据名称、平台和组获取设备配置
+   */ async getDeviceByName(name, platform, group = 'default') {
         const device = await this.prisma.device.findUnique({
             where: {
-                name_platform: {
+                name_platform_group: {
                     name,
-                    platform
+                    platform,
+                    group
                 }
             }
         });
@@ -282,8 +283,11 @@ class DatabaseAdapter {
     }
     /**
    * 获取所有设备配置
-   */ async getAllDevices() {
+   */ async getAllDevices(group) {
         const devices = await this.prisma.device.findMany({
+            where: group ? {
+                group
+            } : {},
             orderBy: {
                 id: 'asc'
             }
@@ -291,11 +295,14 @@ class DatabaseAdapter {
         return devices.map((device)=>this.buildDeviceProfile(device));
     }
     /**
-   * 根据平台获取设备配置列表
-   */ async getDevicesByPlatform(platform) {
+   * 根据平台和组获取设备配置列表
+   */ async getDevicesByPlatform(platform, group) {
         const devices = await this.prisma.device.findMany({
             where: {
-                platform
+                platform,
+                ...group ? {
+                    group
+                } : {}
             },
             orderBy: {
                 id: 'asc'
@@ -322,6 +329,7 @@ class DatabaseAdapter {
             id: device.id.toString(),
             name: device.name,
             platform: device.platform,
+            group: device.group,
             hardware: {
                 cpuCores: device.cpuCores,
                 memory: device.memory ?? undefined,
@@ -365,6 +373,7 @@ class DatabaseAdapter {
             data: {
                 name: device.name,
                 platform: device.platform,
+                group: device.group || 'default',
                 // 硬件参数
                 cpuCores: device.hardware.cpuCores,
                 memory: device.hardware.memory ?? null,
@@ -407,6 +416,7 @@ class DatabaseAdapter {
             data: {
                 name: device.name,
                 platform: device.platform,
+                group: device.group || 'default',
                 // 硬件参数
                 cpuCores: device.hardware.cpuCores,
                 memory: device.hardware.memory ?? null,
@@ -491,11 +501,11 @@ async function getDeviceById(deviceId) {
     }
     return await getDbAdapter().getDeviceById(id);
 }
-async function getAllDevices() {
-    return await getDbAdapter().getAllDevices();
+async function getAllDevices(group) {
+    return await getDbAdapter().getAllDevices(group);
 }
-async function getDevicesByPlatform(platform) {
-    return await getDbAdapter().getDevicesByPlatform(platform);
+async function getDevicesByPlatform(platform, group) {
+    return await getDbAdapter().getDevicesByPlatform(platform, group);
 }
 async function getValidatedDevice(deviceId) {
     const device = await getDeviceById(deviceId);
@@ -534,13 +544,13 @@ class DeviceManager {
     }
     /**
    * 获取所有设备配置
-   */ async getAllDevices() {
-        return await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$data$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getAllDevices"])();
+   */ async getAllDevices(group) {
+        return await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$data$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getAllDevices"])(group);
     }
     /**
    * 根据平台获取设备配置列表
-   */ async getDevicesByPlatform(platform) {
-        return await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$data$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getDevicesByPlatform"])(platform);
+   */ async getDevicesByPlatform(platform, group) {
+        return await (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$data$2f$index$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getDevicesByPlatform"])(platform, group);
     }
     /**
    * 验证设备配置
@@ -1726,16 +1736,24 @@ __turbopack_async_result__();
 
 /**
  * 922proxy 代理配置
- * 硬编码在程序中，国家固定为日本，城市随机选择
+ * 支持多分组配置
  */ /**
  * 日本主要城市列表（用于随机选择）
  */ __turbopack_context__.s([
+    "CANADA_CITIES",
+    ()=>CANADA_CITIES,
     "FIXED_PROXY",
     ()=>FIXED_PROXY,
     "JAPAN_CITIES",
     ()=>JAPAN_CITIES,
     "PROXY_CONFIG",
     ()=>PROXY_CONFIG,
+    "PROXY_GROUPS",
+    ()=>PROXY_GROUPS,
+    "getProxyConfig",
+    ()=>getProxyConfig,
+    "getRandomCity",
+    ()=>getRandomCity,
     "getRandomJapanCity",
     ()=>getRandomJapanCity
 ]);
@@ -1761,18 +1779,60 @@ const JAPAN_CITIES = [
     'Sagamihara',
     'Shizuoka'
 ];
-const FIXED_PROXY = 'as.proxys5.net:6200:30356354-zone-custom-region-JP:nRNz4Tsx';
-const PROXY_CONFIG = {
-    /** API Token */ token: '49d8d3b0-a8a7-419e-ada4-8afd27aecb9f',
-    /** API Key */ key: 'sLPLLr5nhDPl',
-    /** 用户名 */ username: 'shengdunapi',
-    /** 主机名：端口 */ hostname: 'Singapore',
-    /** API 地址 */ apiUrl: 'https://docapi.922proxy.com/api/proxy/isp_generate',
-    /** 国家（固定为日本） */ country: 'Japan'
+const CANADA_CITIES = [
+    'Toronto',
+    'Vancouver',
+    'Montreal',
+    'Ottawa',
+    'Calgary',
+    'Edmonton',
+    'Quebec City',
+    'Winnipeg',
+    'Hamilton',
+    'Kitchener'
+];
+const PROXY_GROUPS = {
+    'default': {
+        fixedProxy: 'as.proxys5.net:6200:30356354-zone-custom-region-JP:nRNz4Tsx',
+        languages: [
+            'ja-JP',
+            'ja',
+            'en-US',
+            'en'
+        ]
+    },
+    'japan-google': {
+        fixedProxy: 'as.proxys5.net:6200:30356354-zone-custom-region-JP:nRNz4Tsx',
+        languages: [
+            'ja-JP',
+            'ja',
+            'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7'
+        ]
+    },
+    'canada-facebook': {
+        fixedProxy: 'ea.proxys5.net:6200:30356354-zone-custom-region-CA:nRNz4Tsx',
+        languages: [
+            'en-CA',
+            'en-US',
+            'en',
+            'fr-CA',
+            'fr'
+        ]
+    }
 };
+function getRandomCity(group = 'default') {
+    const groupConfig = PROXY_GROUPS[group] || PROXY_GROUPS['default'];
+    const cities = groupConfig.config?.cities || JAPAN_CITIES;
+    const randomIndex = Math.floor(Math.random() * cities.length);
+    return cities[randomIndex];
+}
+function getProxyConfig(group = 'default') {
+    return PROXY_GROUPS[group] || PROXY_GROUPS['default'];
+}
+const FIXED_PROXY = PROXY_GROUPS['default'].fixedProxy;
+const PROXY_CONFIG = PROXY_GROUPS['default'].config;
 function getRandomJapanCity() {
-    const randomIndex = Math.floor(Math.random() * JAPAN_CITIES.length);
-    return JAPAN_CITIES[randomIndex];
+    return getRandomCity('default');
 }
 }),
 "[project]/src/services/proxy-service.ts [app-route] (ecmascript)", ((__turbopack_context__) => {
@@ -1799,27 +1859,36 @@ class ProxyService {
         };
     }
     /**
-   * 创建默认配置的 ProxyService 实例（日本+随机城市）
-   */ static createDefault() {
-        // 检查配置是否完整（检查是否为默认占位符值）
-        const token = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].token;
-        const key = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].key;
-        const username = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].username;
-        if (token === 'your_token_here' || key === 'your_key_here' || username === 'your_username_here' || !token || !key || !username) {
-            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].warn(MODULE_NAME, '922proxy 配置未设置，请在 src/config/proxy-config.ts 中配置 token、key 和 username');
+   * 创建指定分组的 ProxyService 实例
+   */ static createForGroup(group = 'default') {
+        const groupConfig = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_GROUPS"][group] || __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_GROUPS"]['default'];
+        const config = groupConfig.config;
+        // 检查配置是否存在
+        if (!config) {
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].debug(MODULE_NAME, `分组 "${group}" 未配置 API (config 字段缺失)，将无法使用 API 获取代理`);
             return null;
         }
-        // 随机选择一个日本城市
-        const city = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getRandomJapanCity"])();
+        // 检查配置是否完整
+        if (config.token === 'your_token_here' || config.key === 'your_key_here' || config.username === 'your_username_here' || !config.token || !config.key || !config.username) {
+            __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].warn(MODULE_NAME, `分组 "${group}" 的 922proxy 配置未设置或不完整`);
+            return null;
+        }
+        // 随机选择一个城市
+        const city = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["getRandomCity"])(group);
         return new ProxyService({
-            token: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].token,
-            key: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].key,
-            username: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].username,
-            country: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].country,
+            token: config.token,
+            key: config.key,
+            username: config.username,
+            country: config.country,
             city,
-            hostname: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].hostname,
-            apiUrl: __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$config$2f$proxy$2d$config$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["PROXY_CONFIG"].apiUrl
+            hostname: config.hostname,
+            apiUrl: config.apiUrl
         });
+    }
+    /**
+   * 创建默认配置的 ProxyService 实例（日本+随机城市）
+   */ static createDefault() {
+        return this.createForGroup('default');
     }
     /**
    * 从环境变量创建 ProxyService 实例（保留用于兼容性）
@@ -1959,6 +2028,8 @@ class BrowserManager {
     pendingReferer = undefined;
     // 待使用的语言轮询列表（用于限制多人使用）
     pendingLanguageRotation = undefined;
+    // 待使用的分组（用于限制多人使用）
+    pendingGroup = undefined;
     constructor(){
         this.db = new __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$database$2f$database$2d$adapter$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["DatabaseAdapter"]();
     }
@@ -2005,11 +2076,13 @@ class BrowserManager {
    * @param url 目标网址
    * @param referer Referer 头（可选）
    * @param languageRotation 语言轮询列表（可选）
-   */ setPendingRequest(url, referer, languageRotation) {
+   * @param group 分组（可选）
+   */ setPendingRequest(url, referer, languageRotation, group) {
         this.pendingUrl = url;
         this.pendingReferer = referer;
         this.pendingLanguageRotation = languageRotation;
-        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `已更新待访问网址: ${url}${referer ? `, Referer: ${referer}` : ''}`);
+        this.pendingGroup = group;
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `已更新待访问网址: ${url}${referer ? `, Referer: ${referer}` : ''}${group ? `, Group: ${group}` : ''}`);
     }
     /**
    * 获取并清除待访问的目标网址
@@ -2021,12 +2094,14 @@ class BrowserManager {
         const result = {
             url: this.pendingUrl,
             referer: this.pendingReferer,
-            languageRotation: this.pendingLanguageRotation
+            languageRotation: this.pendingLanguageRotation,
+            group: this.pendingGroup
         };
         // 清除待访问信息
         this.pendingUrl = null;
         this.pendingReferer = undefined;
         this.pendingLanguageRotation = undefined;
+        this.pendingGroup = undefined;
         return result;
     }
     /**
@@ -2036,10 +2111,10 @@ class BrowserManager {
     }
     /**
    * 从数据库随机选择一个 iOS 设备
-   */ async getRandomDevice() {
-        const devices = await this.db.getDevicesByPlatform('ios');
+   */ async getRandomDevice(group) {
+        const devices = await this.db.getDevicesByPlatform('ios', group);
         if (devices.length === 0) {
-            throw new Error('数据库中没有可用的 iOS 设备');
+            throw new Error(`数据库中没有可用的 iOS 设备${group ? ` (group: ${group})` : ''}`);
         }
         const randomIndex = Math.floor(Math.random() * devices.length);
         const device = devices[randomIndex];
@@ -2089,20 +2164,22 @@ class BrowserManager {
             const actualUrl = pendingRequest.url;
             const actualReferer = pendingRequest.referer;
             const actualLanguageRotation = pendingRequest.languageRotation;
+            const actualGroup = pendingRequest.group;
             // 获取代理配置
-            // 优先使用固定代理，如果未设置则从 922proxy API 获取
+            // 优先使用分组固定代理，如果未设置则从 922proxy API 获取
             let proxyString;
-            // 检查是否配置了固定代理
-            const { FIXED_PROXY } = await __turbopack_context__.A("[project]/src/config/proxy-config.ts [app-route] (ecmascript, async loader)");
-            if (FIXED_PROXY) {
-                proxyString = FIXED_PROXY;
-                __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `使用固定代理: ${FIXED_PROXY.split(':')[0]}:${FIXED_PROXY.split(':')[1]}`);
+            // 获取分组代理配置
+            const { getProxyConfig } = await __turbopack_context__.A("[project]/src/config/proxy-config.ts [app-route] (ecmascript, async loader)");
+            const groupProxyConfig = getProxyConfig(actualGroup);
+            if (groupProxyConfig.fixedProxy) {
+                proxyString = groupProxyConfig.fixedProxy;
+                __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `使用分组 "${actualGroup || 'default'}" 的固定代理: ${proxyString.split(':')[0]}:${proxyString.split(':')[1]}`);
             } else {
-                // 从 922proxy 获取代理（日本+随机城市）
+                // 从 922proxy 获取代理
                 // 如果获取失败，直接终止任务，不启动浏览器
-                const proxyService = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$proxy$2d$service$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ProxyService"].createDefault();
+                const proxyService = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$services$2f$proxy$2d$service$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["ProxyService"].createForGroup(actualGroup);
                 if (!proxyService) {
-                    const errorMsg = '未配置固定代理，且 922proxy 配置未设置。请在 src/config/proxy-config.ts 中配置 FIXED_PROXY 或 token、key 和 username';
+                    const errorMsg = `分组 "${actualGroup || 'default'}" 未配置固定代理，且 922proxy 配置未设置。`;
                     __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].error(MODULE_NAME, errorMsg);
                     throw new Error(errorMsg);
                 }
@@ -2121,7 +2198,7 @@ class BrowserManager {
                 throw new Error(errorMsg);
             }
             // 随机选择设备
-            const { id: deviceId, name: deviceName } = await this.getRandomDevice();
+            const { id: deviceId, name: deviceName } = await this.getRandomDevice(actualGroup);
             // 获取设备平台以确定浏览器引擎
             const device = await this.db.getDeviceById(parseInt(deviceId));
             if (!device) {
@@ -2129,11 +2206,13 @@ class BrowserManager {
             }
             const platform = device.platform;
             const isWebKit = platform === 'ios'; // iOS 使用 WebKit，Android 使用 Chromium
-            // 准备语言轮询列表（使用最新的待访问请求中的语言轮询列表）
-            const languages = actualLanguageRotation || languageRotation || [
+            // 准备语言轮询列表
+            // 优先使用请求中的语言设置，否则使用分组配置中的语言设置，最后 fallback 到默认值
+            const groupLanguages = groupProxyConfig.languages || [
                 'ja-JP',
                 'ja'
             ];
+            const languages = actualLanguageRotation || languageRotation || groupLanguages;
             const selectedLanguage = this.getRandomLanguage(languages);
             // 配置浏览器选项
             // WebKit (iOS) 不支持 'new' headless 模式，只能使用 true/false
@@ -2362,6 +2441,7 @@ class BrowserManager {
                 page,
                 deviceId,
                 deviceName,
+                group: actualGroup,
                 startedAt: new Date()
             };
             __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$utils$2f$logger$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["logger"].info(MODULE_NAME, `浏览器已启动: 设备=${deviceName}, 语言=${selectedLanguage}, URL=${actualUrl}${finalReferer ? `, Referer=${finalReferer}` : ''}`);
@@ -2565,6 +2645,7 @@ class BrowserManager {
             return {
                 isRunning: true,
                 deviceName: this.currentSession.deviceName,
+                group: this.currentSession.group,
                 startedAt: this.currentSession.startedAt
             };
         }
@@ -2603,7 +2684,7 @@ async function POST(request) {
     try {
         // 解析请求体
         const body = await request.json();
-        const { url, referer, languageRotation } = body;
+        const { url, referer, languageRotation, group } = body;
         // 验证参数
         if (!url) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f2e$pnpm$2f$next$40$16$2e$0$2e$3_react$2d$dom$40$19$2e$2$2e$0_react$40$19$2e$2$2e$0_$5f$react$40$19$2e$2$2e$0$2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
@@ -2632,7 +2713,7 @@ async function POST(request) {
             });
         }
         // 无论是否能获取到锁，都先保存目标网址（用于限制多人使用：后到达的请求会覆盖先到达的请求）
-        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$browser$2d$manager$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["browserManager"].setPendingRequest(url, referer, languageRotation);
+        __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$browser$2d$manager$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["browserManager"].setPendingRequest(url, referer, languageRotation, group);
         // 尝试获取锁（同步操作）
         // 如果获取不到锁，直接返回错误，不启动浏览器
         // 但目标网址已经保存，如果当前正在处理的请求延迟结束后，会使用最新的网址
