@@ -730,6 +730,21 @@ class IOSFingerprintStrategy {
     get: () => '${browser.vendor}',
     configurable: true
   });
+
+  Object.defineProperty(navigator, 'appVersion', {
+    get: () => "${browser.userAgent.replace('Mozilla/', '')}",
+    configurable: true
+  });
+
+  Object.defineProperty(navigator, 'product', {
+    get: () => 'Gecko',
+    configurable: true
+  });
+
+  Object.defineProperty(navigator, 'productSub', {
+    get: () => '20030107',
+    configurable: true
+  });
   
   // iOS 设备 plugins 和 mimeTypes 必须为空数组
   Object.defineProperty(navigator, 'plugins', {
@@ -781,7 +796,7 @@ class IOSFingerprintStrategy {
   
   // 修改 WebGL 参数
   const getParameter = WebGLRenderingContext.prototype.getParameter;
-  WebGLRenderingContext.prototype.getParameter = function(parameter) {
+  const webGLGetParameterMock = function(parameter) {
     if (parameter === 37445) { // UNMASKED_VENDOR_WEBGL
       return '${fingerprint.webglVendor || ''}';
     }
@@ -801,8 +816,14 @@ class IOSFingerprintStrategy {
     return getParameter.call(this, parameter);
   };
   
+  Object.defineProperty(webGLGetParameterMock, 'toString', {
+    value: function toString() { return 'function getParameter() { [native code] }'; },
+    writable: false, configurable: false, enumerable: false
+  });
+  WebGLRenderingContext.prototype.getParameter = webGLGetParameterMock;
+  
   const getParameter2 = WebGL2RenderingContext.prototype.getParameter;
-  WebGL2RenderingContext.prototype.getParameter = function(parameter) {
+  const webGL2GetParameterMock = function(parameter) {
     if (parameter === 37445) {
       return '${fingerprint.webglVendor || ''}';
     }
@@ -821,12 +842,17 @@ class IOSFingerprintStrategy {
     return getParameter2.call(this, parameter);
   };
   
+  Object.defineProperty(webGL2GetParameterMock, 'toString', {
+    value: function toString() { return 'function getParameter() { [native code] }'; },
+    writable: false, configurable: false, enumerable: false
+  });
+  WebGL2RenderingContext.prototype.getParameter = webGL2GetParameterMock;
+  
   // 修改 Canvas 指纹
   const toBlob = HTMLCanvasElement.prototype.toBlob;
   const toDataURL = HTMLCanvasElement.prototype.toDataURL;
-  const getImageData = CanvasRenderingContext2D.prototype.getImageData;
   
-  HTMLCanvasElement.prototype.toBlob = function(callback, type, quality) {
+  const toBlobMock = function(callback, type, quality) {
     const canvas = this;
     const context = canvas.getContext('2d');
     if (context) {
@@ -842,7 +868,13 @@ class IOSFingerprintStrategy {
     return toBlob.call(this, callback, type, quality);
   };
   
-  HTMLCanvasElement.prototype.toDataURL = function(type, quality) {
+  Object.defineProperty(toBlobMock, 'toString', {
+    value: function toString() { return 'function toBlob() { [native code] }'; },
+    writable: false, configurable: false, enumerable: false
+  });
+  HTMLCanvasElement.prototype.toBlob = toBlobMock;
+  
+  const toDataURLMock = function(type, quality) {
     const canvas = this;
     const context = canvas.getContext('2d');
     if (context) {
@@ -857,13 +889,19 @@ class IOSFingerprintStrategy {
     }
     return toDataURL.call(this, type, quality);
   };
+
+  Object.defineProperty(toDataURLMock, 'toString', {
+    value: function toString() { return 'function toDataURL() { [native code] }'; },
+    writable: false, configurable: false, enumerable: false
+  });
+  HTMLCanvasElement.prototype.toDataURL = toDataURLMock;
   
   // 修改 AudioContext 指纹
   const createAnalyser = AudioContext.prototype.createAnalyser;
-  AudioContext.prototype.createAnalyser = function() {
+  const createAnalyserMock = function() {
     const analyser = createAnalyser.call(this);
     const getFloatFrequencyData = analyser.getFloatFrequencyData;
-    analyser.getFloatFrequencyData = function(array) {
+    const getFloatFrequencyDataMock = function(array) {
       getFloatFrequencyData.call(this, array);
       // 随机生成种子值（每次调用保持一致）
       const seed = ${Math.random()};
@@ -871,8 +909,19 @@ class IOSFingerprintStrategy {
         array[i] += seed * 0.0001;
       }
     };
+    Object.defineProperty(getFloatFrequencyDataMock, 'toString', {
+      value: function toString() { return 'function getFloatFrequencyData() { [native code] }'; },
+      writable: false, configurable: false, enumerable: false
+    });
+    analyser.getFloatFrequencyData = getFloatFrequencyDataMock;
     return analyser;
   };
+
+  Object.defineProperty(createAnalyserMock, 'toString', {
+    value: function toString() { return 'function createAnalyser() { [native code] }'; },
+    writable: false, configurable: false, enumerable: false
+  });
+  AudioContext.prototype.createAnalyser = createAnalyserMock;
   
   // 修改网络信息
   if (navigator.connection) {
@@ -908,6 +957,16 @@ class IOSFingerprintStrategy {
     get: () => ${hardware.screenHeight},
     configurable: true
   });
+
+  Object.defineProperty(window, 'outerWidth', {
+    get: () => ${hardware.screenWidth},
+    configurable: true
+  });
+
+  Object.defineProperty(window, 'outerHeight', {
+    get: () => ${hardware.screenHeight},
+    configurable: true
+  });
   
   // 修复浏览器最小宽度限制导致的白边问题
   // 在页面加载时强制设置视口宽度并隐藏水平滚动
@@ -930,7 +989,7 @@ class IOSFingerprintStrategy {
       document.addEventListener('DOMContentLoaded', setViewport);
     }
     
-    // 添加 CSS 防止白边和水平滚动
+    // 添加 CSS 防止白边和水平滚动，并模拟 iOS 的隐藏滚动条行为
     const style = document.createElement('style');
     style.textContent = \`
       html, body {
@@ -943,6 +1002,11 @@ class IOSFingerprintStrategy {
       * {
         max-width: 100% !important;
         box-sizing: border-box !important;
+      }
+      /* 模拟 iOS 滚动条行为（宽度为0） */
+      ::-webkit-scrollbar {
+        width: 0 !important;
+        height: 0 !important;
       }
     \`;
     
@@ -1002,15 +1066,45 @@ class IOSFingerprintStrategy {
   
   // iOS 特殊能力：ApplePaySession（仅在 iOS Safari 中存在）
   if (!window.ApplePaySession) {
-    window.ApplePaySession = function() {};
-    window.ApplePaySession.supportsVersion = function(version) {
-      return version === 3;
+    const ApplePaySessionMock = function() {};
+    ApplePaySessionMock.supportsVersion = function(version) {
+      // 2.0 检测脚本会检查 version 3
+      return version >= 1 && version <= 12; 
     };
-    window.ApplePaySession.canMakePayments = function() {
-      return false;
+    ApplePaySessionMock.canMakePayments = function() {
+      return true;
     };
+    ApplePaySessionMock.canMakePaymentsWithActiveCard = function() {
+      return Promise.resolve(true);
+    };
+    
+    // 也要确保 toString 返回 [native code]
+    Object.defineProperty(ApplePaySessionMock, 'toString', {
+      value: function toString() { return 'function ApplePaySession() { [native code] }'; },
+      writable: false, configurable: false, enumerable: false
+    });
+    Object.defineProperty(ApplePaySessionMock.supportsVersion, 'toString', {
+      value: function toString() { return 'function supportsVersion() { [native code] }'; },
+      writable: false, configurable: false, enumerable: false
+    });
+
+    window.ApplePaySession = ApplePaySessionMock;
   }
   
+  // 移除或隐藏不属于 iOS Safari 的 API (如 IdleDetector, NDEFReader, userAgentData)
+  // 如果当前是 Chromium 环境模拟，则需要彻底清除这些 Chromium 特有的标识
+  if ('IdleDetector' in window) delete window.IdleDetector;
+  if ('NDEFReader' in window) delete window.NDEFReader;
+  if ('chrome' in window) delete window.chrome;
+  if (navigator.contacts) delete navigator.contacts;
+  
+  // 关键：iOS Safari 绝对没有 userAgentData
+  // 如果存在（例如在 Chromium 中模拟），必须彻底删除，否则会被作为模拟器直接识破
+  if ('userAgentData' in navigator) {
+    // @ts-ignore
+    delete navigator.userAgentData;
+  }
+
   // iOS PWA standalone 模式
   Object.defineProperty(navigator, 'standalone', {
     get: () => false,
@@ -1018,66 +1112,16 @@ class IOSFingerprintStrategy {
     enumerable: true
   });
   
-  // 处理 userAgentData (Client Hints API)
-  // 优化：使用 Proxy 隐藏属性描述符，避免被检测脚本发现 configurable: true
-  if (!navigator.userAgentData) {
-    // 优化：使用 Function 构造函数创建 getHighEntropyValues，避免 Promise.resolve 特征
-    const getHighEntropyValuesCode = [
-      'var result = {',
-      '  platform: ' + ${JSON.stringify(system.platform)} + ',',
-      '  platformVersion: ' + ${JSON.stringify(system.osVersion)} + ',',
-      '  model: ' + ${JSON.stringify('iPhone')} + ',',
-      '  mobile: true',
-      '};',
-      'var p = new Promise(function(r) { r(result); });',
-      'return p;'
-    ].join('\\n');
-    
-    const getHighEntropyValuesFn = new Function('hints', getHighEntropyValuesCode);
-    
-    // 优化：修改 getHighEntropyValues 的 toString，使其返回 [native code]
-    Object.defineProperty(getHighEntropyValuesFn, 'toString', {
-      value: function toString() { return 'function getHighEntropyValues() { [native code] }'; },
-      writable: false,
-      configurable: false,
-      enumerable: false
-    });
-    
-    const userAgentDataValue = {
-      platform: '${system.platform}',
-      brands: [
-        { brand: 'Safari', version: '${browser.version}' }
-      ],
-      mobile: true,
-      getHighEntropyValues: getHighEntropyValuesFn
-    };
-    
-    // 优化：拦截 Object.getOwnPropertyDescriptor，隐藏属性描述符的真实值
-    // 必须在定义属性之前设置拦截器
-    const originalGetOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
-    Object.getOwnPropertyDescriptor = function(obj, prop) {
-      if (obj === navigator && prop === 'userAgentData') {
-        // 返回一个假的描述符，显示 configurable: false
-        const realDesc = originalGetOwnPropertyDescriptor.call(Object, obj, prop);
-        if (realDesc) {
-          return {
-            get: realDesc.get,
-            set: realDesc.set,
-            enumerable: realDesc.enumerable,
-            configurable: false,  // 伪装成不可配置
-            writable: false
-          };
-        }
-      }
-      return originalGetOwnPropertyDescriptor.call(Object, obj, prop);
-    };
-    
-    // 定义 userAgentData 属性
-    Object.defineProperty(navigator, 'userAgentData', {
-      get: () => userAgentDataValue,
-      configurable: true,  // 实际设置为 true（因为 false 会失败）
-      enumerable: true
-    });
+  // 彻底移除 webdriver 标识
+  if (navigator.webdriver !== undefined) {
+    try {
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => false,
+        configurable: true
+      });
+      // @ts-ignore
+      delete navigator.webdriver;
+    } catch (e) {}
   }
   
 })();
@@ -1811,12 +1855,11 @@ const PROXY_GROUPS = {
     },
     'canada-facebook': {
         fixedProxy: 'ea.proxys5.net:6200:30356354-zone-custom-region-CA:nRNz4Tsx',
+        // 目标受众：加拿大的台湾人。提供多种复合型语言组合以提高仿真度
         languages: [
-            'en-CA',
-            'en-US',
-            'en',
-            'fr-CA',
-            'fr'
+            'zh-TW,zh;q=0.9,en-CA;q=0.8,en-US;q=0.7',
+            'zh-TW,en-CA;q=0.9',
+            'zh-TW'
         ]
     }
 };

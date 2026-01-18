@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="referrer" content="no-referrer">
+        <link rel="icon" href="data:,">
+        <title>opening &hellip;</title>
+    </head>
+    <body>
+        <style>
+            body {
+                margin: 100px 10px;
+                font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+                background-color: #f8f9fa;
+                color: #999;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 50vh;
+                text-align: center
+            }
+
+            :root {
+                --c1: #555;
+                --c2: #aaa;
+                --c3: #eee
+            }
+
+            .code {
+                font-size: 1.33rem !important;
+                opacity: .3;
+                line-height: 2;
+                font-weight: 500;
+                letter-spacing: .06em;
+                color: transparent;
+                background: linear-gradient(100deg,var(--c1) 15%,var(--c2) 45%,var(--c3) 55%,var(--c1) 85%);
+                background-size: 200% 100%;
+                -webkit-background-clip: text;
+                background-clip: text;
+                animation: shimmer .99s linear infinite
+            }
+
+            @keyframes shimmer {
+                0% {
+                    background-position: 200% 0
+                }
+
+                100% {
+                    background-position: -200% 0
+                }
+            }
+
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --c1:#b5bcc6;
+                    --c2: #d6dde6;
+                    --c3: #f3f5f8
+                }
+            }
+        </style>
+        <script>
+            !function(t, n) {
+                var r, e;
+                "object" == typeof exports && "undefined" != typeof module ? module.exports = n() : "function" == typeof define && define.amd ? define(n) : (r = t.Base64,
+                (e = n()).noConflict = function() {
+                    return t.Base64 = r,
+                    e
+                }
+                ,
+                t.Meteor && (Base64 = e),
+                t.Base64 = e)
+            }("undefined" != typeof self ? self : "undefined" != typeof window ? window : "undefined" != typeof global ? global : this, (function() {
+                "use strict";
+                var t, n = "3.7.8", r = n, e = "function" == typeof Buffer, o = "function" == typeof TextDecoder ? new TextDecoder : void 0, u = "function" == typeof TextEncoder ? new TextEncoder : void 0, i = Array.prototype.slice.call("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="), f = (t = {},
+                i.forEach((function(n, r) {
+                    return t[n] = r
+                }
+                )),
+                t), c = /^(?:[A-Za-z\d+\/]{4})*?(?:[A-Za-z\d+\/]{2}(?:==)?|[A-Za-z\d+\/]{3}=?)?$/, a = String.fromCharCode.bind(String), d = "function" == typeof Uint8Array.from ? Uint8Array.from.bind(Uint8Array) : function(t) {
+                    return new Uint8Array(Array.prototype.slice.call(t, 0))
+                }
+                , s = function(t) {
+                    return t.replace(/=/g, "").replace(/[+\/]/g, (function(t) {
+                        return "+" == t ? "-" : "_"
+                    }
+                    ))
+                }, l = function(t) {
+                    return t.replace(/[^A-Za-z0-9\+\/]/g, "")
+                }, h = function(t) {
+                    for (var n, r, e, o, u = "", f = t.length % 3, c = 0; c < t.length; ) {
+                        if ((r = t.charCodeAt(c++)) > 255 || (e = t.charCodeAt(c++)) > 255 || (o = t.charCodeAt(c++)) > 255)
+                            throw new TypeError("invalid character found");
+                        u += i[(n = r << 16 | e << 8 | o) >> 18 & 63] + i[n >> 12 & 63] + i[n >> 6 & 63] + i[63 & n]
+                    }
+                    return f ? u.slice(0, f - 3) + "===".substring(f) : u
+                }, p = "function" == typeof btoa ? function(t) {
+                    return btoa(t)
+                }
+                : e ? function(t) {
+                    return Buffer.from(t, "binary").toString("base64")
+                }
+                : h, y = e ? function(t) {
+                    return Buffer.from(t).toString("base64")
+                }
+                : function(t) {
+                    for (var n = [], r = 0, e = t.length; r < e; r += 4096)
+                        n.push(a.apply(null, t.subarray(r, r + 4096)));
+                    return p(n.join(""))
+                }
+                , A = function(t, n) {
+                    return void 0 === n && (n = !1),
+                    n ? s(y(t)) : y(t)
+                }, b = function(t) {
+                    if (t.length < 2)
+                        return (n = t.charCodeAt(0)) < 128 ? t : n < 2048 ? a(192 | n >>> 6) + a(128 | 63 & n) : a(224 | n >>> 12 & 15) + a(128 | n >>> 6 & 63) + a(128 | 63 & n);
+                    var n = 65536 + 1024 * (t.charCodeAt(0) - 55296) + (t.charCodeAt(1) - 56320);
+                    return a(240 | n >>> 18 & 7) + a(128 | n >>> 12 & 63) + a(128 | n >>> 6 & 63) + a(128 | 63 & n)
+                }, g = /[\uD800-\uDBFF][\uDC00-\uDFFFF]|[^\x00-\x7F]/g, B = function(t) {
+                    return t.replace(g, b)
+                }, x = e ? function(t) {
+                    return Buffer.from(t, "utf8").toString("base64")
+                }
+                : u ? function(t) {
+                    return y(u.encode(t))
+                }
+                : function(t) {
+                    return p(B(t))
+                }
+                , C = function(t, n) {
+                    return void 0 === n && (n = !1),
+                    n ? s(x(t)) : x(t)
+                }, m = function(t) {
+                    return C(t, !0)
+                }, v = /[\xC0-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|[\xF0-\xF7][\x80-\xBF]{3}/g, U = function(t) {
+                    switch (t.length) {
+                    case 4:
+                        var n = ((7 & t.charCodeAt(0)) << 18 | (63 & t.charCodeAt(1)) << 12 | (63 & t.charCodeAt(2)) << 6 | 63 & t.charCodeAt(3)) - 65536;
+                        return a(55296 + (n >>> 10)) + a(56320 + (1023 & n));
+                    case 3:
+                        return a((15 & t.charCodeAt(0)) << 12 | (63 & t.charCodeAt(1)) << 6 | 63 & t.charCodeAt(2));
+                    default:
+                        return a((31 & t.charCodeAt(0)) << 6 | 63 & t.charCodeAt(1))
+                    }
+                }, F = function(t) {
+                    return t.replace(v, U)
+                }, w = function(t) {
+                    if (t = t.replace(/\s+/g, ""),
+                    !c.test(t))
+                        throw new TypeError("malformed base64.");
+                    var n, r, e;
+                    t += "==".slice(2 - (3 & t.length));
+                    for (var o = [], u = 0; u < t.length; )
+                        n = f[t.charAt(u++)] << 18 | f[t.charAt(u++)] << 12 | (r = f[t.charAt(u++)]) << 6 | (e = f[t.charAt(u++)]),
+                        64 === r ? o.push(a(n >> 16 & 255)) : 64 === e ? o.push(a(n >> 16 & 255, n >> 8 & 255)) : o.push(a(n >> 16 & 255, n >> 8 & 255, 255 & n));
+                    return o.join("")
+                }, S = "function" == typeof atob ? function(t) {
+                    return atob(l(t))
+                }
+                : e ? function(t) {
+                    return Buffer.from(t, "base64").toString("binary")
+                }
+                : w, E = e ? function(t) {
+                    return d(Buffer.from(t, "base64"))
+                }
+                : function(t) {
+                    return d(S(t).split("").map((function(t) {
+                        return t.charCodeAt(0)
+                    }
+                    )))
+                }
+                , D = function(t) {
+                    return E(j(t))
+                }, R = e ? function(t) {
+                    return Buffer.from(t, "base64").toString("utf8")
+                }
+                : o ? function(t) {
+                    return o.decode(E(t))
+                }
+                : function(t) {
+                    return F(S(t))
+                }
+                , j = function(t) {
+                    return l(t.replace(/[-_]/g, (function(t) {
+                        return "-" == t ? "+" : "/"
+                    }
+                    )))
+                }, z = function(t) {
+                    return R(j(t))
+                }, T = function(t) {
+                    return {
+                        value: t,
+                        enumerable: !1,
+                        writable: !0,
+                        configurable: !0
+                    }
+                }, Z = function() {
+                    var t = function(t, n) {
+                        return Object.defineProperty(String.prototype, t, T(n))
+                    };
+                    t("fromBase64", (function() {
+                        return z(this)
+                    }
+                    )),
+                    t("toBase64", (function(t) {
+                        return C(this, t)
+                    }
+                    )),
+                    t("toBase64URI", (function() {
+                        return C(this, !0)
+                    }
+                    )),
+                    t("toBase64URL", (function() {
+                        return C(this, !0)
+                    }
+                    )),
+                    t("toUint8Array", (function() {
+                        return D(this)
+                    }
+                    ))
+                }, I = function() {
+                    var t = function(t, n) {
+                        return Object.defineProperty(Uint8Array.prototype, t, T(n))
+                    };
+                    t("toBase64", (function(t) {
+                        return A(this, t)
+                    }
+                    )),
+                    t("toBase64URI", (function() {
+                        return A(this, !0)
+                    }
+                    )),
+                    t("toBase64URL", (function() {
+                        return A(this, !0)
+                    }
+                    ))
+                }, O = {
+                    version: n,
+                    VERSION: r,
+                    atob: S,
+                    atobPolyfill: w,
+                    btoa: p,
+                    btoaPolyfill: h,
+                    fromBase64: z,
+                    toBase64: C,
+                    encode: C,
+                    encodeURI: m,
+                    encodeURL: m,
+                    utob: B,
+                    btou: F,
+                    decode: z,
+                    isValid: function(t) {
+                        if ("string" != typeof t)
+                            return !1;
+                        var n = t.replace(/\s+/g, "").replace(/={0,2}$/, "");
+                        return !/[^\s0-9a-zA-Z\+/]/.test(n) || !/[^\s0-9a-zA-Z\-_]/.test(n)
+                    },
+                    fromUint8Array: A,
+                    toUint8Array: D,
+                    extendString: Z,
+                    extendUint8Array: I,
+                    extendBuiltins: function() {
+                        Z(),
+                        I()
+                    },
+                    Base64: {}
+                };
+                return Object.keys(O).forEach((function(t) {
+                    return O.Base64[t] = O[t]
+                }
+                )),
+                O
+            }
+            ));
+            !function() {
+                if (void 0 === window.Promise) {
+                    function e(t) {
+                        var n = this;
+                        function o(e) {
+                            0 === n._state && (n._state = 2,
+                            n._value = e,
+                            r())
+                        }
+                        function r() {
+                            setTimeout(function() {
+                                var e = n._handlers.slice();
+                                n._handlers = [];
+                                for (var t = 0; t < e.length; t++) {
+                                    var o = e[t];
+                                    try {
+                                        1 === n._state ? "function" == typeof o.onFulfilled ? o.resolve(o.onFulfilled(n._value)) : o.resolve(n._value) : 2 === n._state && ("function" == typeof o.onRejected ? o.resolve(o.onRejected(n._value)) : o.reject(n._value))
+                                    } catch (e) {
+                                        o.reject(e)
+                                    }
+                                }
+                            }, 1)
+                        }
+                        n._state = 0,
+                        n._value = void 0,
+                        n._handlers = [],
+                        n.then = function(t, o) {
+                            return new e(function(e, a) {
+                                n._handlers.push({
+                                    onFulfilled: t,
+                                    onRejected: o,
+                                    resolve: e,
+                                    reject: a
+                                }),
+                                0 !== n._state && r()
+                            }
+                            )
+                        }
+                        ,
+                        n.catch = function(e) {
+                            return n.then(null, e)
+                        }
+                        ;
+                        try {
+                            t(function(e) {
+                                0 === n._state && (n._state = 1,
+                                n._value = e,
+                                r())
+                            }, o)
+                        } catch (e) {
+                            o(e)
+                        }
+                    }
+                    e.resolve = function(t) {
+                        return new e(function(e) {
+                            e(t)
+                        }
+                        )
+                    }
+                    ,
+                    e.reject = function(t) {
+                        return new e(function(e, n) {
+                            n(t)
+                        }
+                        )
+                    }
+                    ,
+                    e.race = function(t) {
+                        return new e(function(n, o) {
+                            for (var r = 0; r < t.length; r++)
+                                e.resolve(t[r]).then(n, o)
+                        }
+                        )
+                    }
+                    ,
+                    window.Promise = e
+                }
+                void 0 === window.fetch && (window.fetch = function(e, t) {
+                    return t = t || {},
+                    new Promise(function(n, o) {
+                        try {
+                            var r = new XMLHttpRequest;
+                            r.open(t.method || "GET", e, !0);
+                            var a = t.headers || {};
+                            for (var i in a)
+                                if (a.hasOwnProperty(i))
+                                    try {
+                                        r.setRequestHeader(i, a[i])
+                                    } catch (e) {}
+                            r.onreadystatechange = function() {
+                                if (4 === r.readyState) {
+                                    var e = {
+                                        ok: r.status >= 200 && r.status < 300,
+                                        status: r.status,
+                                        json: function() {
+                                            return new Promise(function(e, t) {
+                                                try {
+                                                    e(JSON.parse(r.responseText))
+                                                } catch (e) {
+                                                    t(e)
+                                                }
+                                            }
+                                            )
+                                        },
+                                        text: function() {
+                                            return Promise.resolve(r.responseText)
+                                        }
+                                    };
+                                    n(e)
+                                }
+                            }
+                            ,
+                            r.onerror = function() {
+                                o(new Error("network"))
+                            }
+                            ,
+                            r.send(t.body || null)
+                        } catch (e) {
+                            o(e)
+                        }
+                    }
+                    )
+                }
+                ),
+                void 0 === window.TextEncoder && (window.TextEncoder = function() {}
+                ,
+                window.TextEncoder.prototype.encode = function(e) {
+                    var t, n = [], o = 0;
+                    for (o = 0; o < e.length; o++)
+                        (t = e.charCodeAt(o)) < 128 ? n.push(t) : t < 2048 ? n.push(t >> 6 | 192, 63 & t | 128) : 55296 == (64512 & t) && o + 1 < e.length && 56320 == (64512 & e.charCodeAt(o + 1)) ? (t = 65536 + ((1023 & t) << 10) + (1023 & e.charCodeAt(++o)),
+                        n.push(t >> 18 | 240, t >> 12 & 63 | 128, t >> 6 & 63 | 128, 63 & t | 128)) : n.push(t >> 12 | 224, t >> 6 & 63 | 128, 63 & t | 128);
+                    return new Uint8Array(n)
+                }
+                ),
+                void 0 === window.Uint8Array && (window.Uint8Array = function(e) {
+                    if ("number" == typeof e) {
+                        for (var t = [], n = 0; n < e; n++)
+                            t[n] = 0;
+                        return t
+                    }
+                    return e || []
+                }
+                ),
+                "userAgentData"in navigator || (navigator.userAgentData = null);
+                try {
+                    var t = HTMLCanvasElement && HTMLCanvasElement.prototype && HTMLCanvasElement.prototype.getContext;
+                    t && (HTMLCanvasElement.prototype.getContext = function(e) {
+                        try {
+                            return t.call(this, e)
+                        } catch (e) {
+                            return null
+                        }
+                    }
+                    )
+                } catch (n) {}
+                try {
+                    window.Intl && window.Intl.DateTimeFormat || (window.Intl = {
+                        DateTimeFormat: function() {
+                            return {
+                                resolvedOptions: function() {
+                                    return {
+                                        timeZone: null
+                                    }
+                                }
+                            }
+                        }
+                    })
+                } catch (o) {}
+            }(),
+            function() {
+                var e = {
+                    set: function(e, t) {
+                        if (e && "string" == typeof t) {
+                            var n = ["max-age=31536000", "path=/", "SameSite=Lax"];
+                            "https:" === location.protocol && n.push("Secure");
+                            try {
+                                document.cookie = e + "=" + encodeURIComponent(t) + "; " + n.join("; ")
+                            } catch (e) {}
+                            try {
+                                localStorage.setItem(e, t)
+                            } catch (e) {}
+                            try {
+                                sessionStorage.setItem(e, t)
+                            } catch (e) {}
+                        }
+                    },
+                    get: function(t, n) {
+                        var o = [];
+                        try {
+                            var r = document.cookie.match(new RegExp("(?:^|; )" + t + "=([^;]*)"));
+                            r && o.push(decodeURIComponent(r[1]))
+                        } catch (e) {}
+                        try {
+                            var a = localStorage.getItem(t);
+                            a && o.push(a)
+                        } catch (e) {}
+                        try {
+                            var i = sessionStorage.getItem(t);
+                            i && o.push(i)
+                        } catch (e) {}
+                        var c, u = {};
+                        for (c = 0; c < o.length; c++) {
+                            var l = o[c];
+                            u[l] = (u[l] || 0) + 1
+                        }
+                        var d = [];
+                        for (var f in u)
+                            u.hasOwnProperty(f) && d.push(f);
+                        d.sort(function(e, t) {
+                            return u[t] - u[e]
+                        });
+                        var s = d.length > 0 ? d[0] : void 0;
+                        if (s)
+                            try {
+                                -1 === document.cookie.indexOf(t + "=") && e.set(t, s),
+                                localStorage.getItem(t) || e.set(t, s),
+                                sessionStorage.getItem(t) || e.set(t, s)
+                            } catch (e) {}
+                        return "function" == typeof n && n(s),
+                        s
+                    },
+                    fetchWithTimeout: function(e, t, n) {
+                        return n = n || 15e3,
+                        Promise.race([fetch(e, t), new Promise(function(e, t) {
+                            setTimeout(function() {
+                                t(new Error("timeout"))
+                            }, n)
+                        }
+                        )])
+                    },
+                    redirect: function(e) {
+                        try {
+                            location.replace(e)
+                        } catch (t) {
+                            location.href = e
+                        }
+                    },
+                    info: function() {
+                        return "number" != typeof navigator.hardwareConcurrency && (navigator.hardwareConcurrency = 0),
+                        "number" != typeof navigator.deviceMemory && (navigator.deviceMemory = 0),
+                        "number" != typeof navigator.maxTouchPoints && (navigator.maxTouchPoints = 0),
+                        new Promise(function(e, t) {
+                            try {
+                                var n = function() {
+                                    try {
+                                        var e = document.createElement("canvas");
+                                        if (!e)
+                                            return {
+                                                vendor: null,
+                                                render: null
+                                            };
+                                        var t = e.getContext("webgl") || e.getContext("experimental-webgl");
+                                        if (!t)
+                                            return {
+                                                vendor: null,
+                                                render: null
+                                            };
+                                        var n = null
+                                          , o = null;
+                                        try {
+                                            var r = t.getExtension("WEBGL_debug_renderer_info");
+                                            r ? (n = t.getParameter(r.UNMASKED_VENDOR_WEBGL) || null,
+                                            o = t.getParameter(r.UNMASKED_RENDERER_WEBGL) || null) : o = t.getParameter(t.RENDERER) || null
+                                        } catch (e) {
+                                            n = null,
+                                            o = null
+                                        }
+                                        return {
+                                            vendor: n,
+                                            render: o
+                                        }
+                                    } catch (e) {
+                                        return {
+                                            vendor: null,
+                                            render: null
+                                        }
+                                    }
+                                }()
+                                  , o = function() {
+                                    if (!document.body)
+                                        return 0;
+                                    var e = document.createElement("div");
+                                    e.style.cssText = "position:absolute;visibility:hidden;width:50px;height:50px;overflow:auto";
+                                    var t = document.createElement("div");
+                                    t.style.height = "100px",
+                                    e.appendChild(t),
+                                    document.body.appendChild(e);
+                                    var n = e.offsetWidth - e.clientWidth;
+                                    try {
+                                        document.body.removeChild(e)
+                                    } catch (e) {}
+                                    return n
+                                }()
+                                  , r = function() {
+                                    try {
+                                        var e = document.createElement("canvas");
+                                        if (!e)
+                                            return {
+                                                ok: !1,
+                                                tex: null,
+                                                buffer: null,
+                                                vary: null
+                                            };
+                                        var t = e.getContext("webgl") || e.getContext("experimental-webgl");
+                                        if (!t)
+                                            return {
+                                                ok: !1,
+                                                tex: null,
+                                                buffer: null,
+                                                vary: null
+                                            };
+                                        var n = null
+                                          , o = null
+                                          , r = null;
+                                        try {
+                                            n = t.getParameter(t.MAX_TEXTURE_SIZE) || null
+                                        } catch (e) {}
+                                        try {
+                                            o = t.getParameter(t.MAX_RENDERBUFFER_SIZE) || null
+                                        } catch (e) {}
+                                        try {
+                                            r = t.getParameter(t.MAX_VARYING_VECTORS || t.MAX_VARYING_FLOATS) || null
+                                        } catch (e) {}
+                                        return {
+                                            ok: !0,
+                                            tex: n,
+                                            buffer: o,
+                                            vary: r
+                                        }
+                                    } catch (e) {
+                                        return {
+                                            ok: !1,
+                                            tex: null,
+                                            buffer: null,
+                                            vary: null
+                                        }
+                                    }
+                                }()
+                                  , a = function() {
+                                    var e = null
+                                      , t = null;
+                                    try {
+                                        e = (new Date).getTimezoneOffset()
+                                    } catch (t) {
+                                        e = null
+                                    }
+                                    try {
+                                        "undefined" != typeof Intl && "function" == typeof Intl.DateTimeFormat && "function" == typeof Intl.DateTimeFormat().resolvedOptions && (t = Intl.DateTimeFormat().resolvedOptions().timeZone || null)
+                                    } catch (e) {
+                                        t = null
+                                    }
+                                    return {
+                                        offset: e,
+                                        zone: t
+                                    }
+                                }()
+                                  , i = {
+                                    platform: "undefined" != typeof navigator && navigator.platform || "",
+                                    timeOffset: a.offset,
+                                    timeZone: a.zone,
+                                    language: "undefined" != typeof navigator ? navigator.language : null,
+                                    languages: "undefined" != typeof navigator && navigator.languages || [],
+                                    url: "undefined" != typeof window ? window.location.href : "",
+                                    referrer: "undefined" != typeof document ? document.referrer : "",
+                                    capabilities: {
+                                        applePaySession: function() {
+                                            try {
+                                                return "function" == typeof window.ApplePaySession
+                                            } catch (e) {
+                                                return !1
+                                            }
+                                        }(),
+                                        applePaySupports: function() {
+                                            try {
+                                                return "function" == typeof window.ApplePaySession && "function" == typeof window.ApplePaySession.supportsVersion && !0 === window.ApplePaySession.supportsVersion(3)
+                                            } catch (e) {
+                                                return !1
+                                            }
+                                        }(),
+                                        hasStandalone: "undefined" != typeof navigator && "standalone"in navigator,
+                                        idleDetector: "undefined" != typeof window && "IdleDetector"in window,
+                                        webNFC: "undefined" != typeof window && void 0 !== window.NDEFReader,
+                                        contactPicker: !("undefined" == typeof navigator || !navigator.contacts || "function" != typeof navigator.contacts.select)
+                                    },
+                                    metrics: {
+                                        render: n.render || null,
+                                        vendor: n.vendor || null,
+                                        behavior: o || 0,
+                                        tex: r.tex || 0,
+                                        buffer: r.buffer || 0,
+                                        vary: r.vary || 0,
+                                        motion: !1,
+                                        concurrency: navigator.hardwareConcurrency || 0,
+                                        deviceMemory: navigator.deviceMemory || 0,
+                                        maxTouchPoints: navigator.maxTouchPoints || 0,
+                                        screenWidth: window.screen && "number" == typeof window.screen.width ? window.screen.width : 0,
+                                        screenHeight: window.screen && "number" == typeof window.screen.height ? window.screen.height : 0,
+                                        innerWidth: "undefined" != typeof window && window.innerWidth || 0,
+                                        innerHeight: "undefined" != typeof window && window.innerHeight || 0,
+                                        dpr: function() {
+                                            try {
+                                                return Number(((window.devicePixelRatio || 0) + 0).toFixed ? (window.devicePixelRatio || 0).toFixed(3) : window.devicePixelRatio || 0)
+                                            } catch (e) {
+                                                return 0
+                                            }
+                                        }()
+                                    },
+                                    network: {
+                                        connectionType: navigator.connection ? navigator.connection.type : "unknown",
+                                        downlink: navigator.connection ? navigator.connection.downlink : 0
+                                    },
+                                    clientHints: null
+                                };
+                                !function(e) {
+                                    var t = navigator.userAgent || ""
+                                      , n = {
+                                        platform: "",
+                                        platformVersion: "",
+                                        model: "",
+                                        mobile: null
+                                    };
+                                    function o() {
+                                        try {
+                                            var o = t.match(/\bAndroid\s+(\d+)(?:[._](\d+))?/i);
+                                            if (o) {
+                                                n.platform = "Android",
+                                                n.platformVersion = o[1] || "";
+                                                var r = t.match(/Android [\d._]+;?\s*([^;()]+?)(?: Build\/|\)|;)/i);
+                                                r && r[1] && (n.model = r[1].trim()),
+                                                n.mobile = !0
+                                            } else {
+                                                n.platform = navigator.platform || "",
+                                                n.mobile = /Mobi|Android|iPhone|Mobile/i.test(t);
+                                                var a = t.match(/\((iPhone|iPad|iPod)[^)]+\)/i);
+                                                a && a[1] && (n.model = a[1])
+                                            }
+                                        } catch (e) {}
+                                        e(n)
+                                    }
+                                    try {
+                                        navigator.userAgentData && "function" == typeof navigator.userAgentData.getHighEntropyValues ? Promise.race([navigator.userAgentData.getHighEntropyValues(["platform", "platformVersion", "model", "mobile"]), new Promise(function(e, t) {
+                                            setTimeout(function() {
+                                                t(new Error("timeout"))
+                                            }, 500)
+                                        }
+                                        )]).then(function(t) {
+                                            n.platform = t.platform || navigator.userAgentData.platform || "",
+                                            n.platformVersion = t.platformVersion || "",
+                                            n.model = t.model || "",
+                                            n.mobile = "boolean" == typeof t.mobile ? t.mobile : null,
+                                            e(n)
+                                        }).catch(function() {
+                                            o()
+                                        }) : o()
+                                    } catch (e) {
+                                        o()
+                                    }
+                                }(function(n) {
+                                    i.clientHints = n,
+                                    function(n) {
+                                        try {
+                                            e({
+                                                encoded: Base64.encode((o = JSON.stringify(n),
+                                                "string" != typeof o ? o : ((o = o.replace(/([\uD800-\uDBFF][\uDC00-\uDFFF])|[\uFE0F\u200D]|[\u0000-\u001F\u007F-\u009F]/g, "")).normalize && (o = o.normalize("NFD").replace(/[\u0300-\u036f]/g, "")),
+                                                o.trim()))),
+                                                raw: n
+                                            })
+                                        } catch (e) {
+                                            t(e)
+                                        }
+                                        var o
+                                    }(i)
+                                })
+                            } catch (e) {
+                                t(e)
+                            }
+                        }
+                        )
+                    }
+                };
+                window['LSOjirUoz'] = function(t) {
+                    var n = (t = t || {}).token || ""
+                      , o = t.path || ""
+                      , r = t.cacheKey
+                      , a = t.cacheValue
+                      , i = t.cacheCount || 1
+                      , c = t.cacheTime || 0
+                      , u = t.fallbackUrl || "/404"
+                      , l = t.successJumpUrl || "/"
+                      , d = (t.minWait,
+                    t.maxWait || 15e3)
+                      , f = t.enableCache || !0
+                      , s = t.enableInfo || !0;
+                    f && r && a && e.set(r, a);
+                    var h = ""
+                      , m = Promise.resolve(!0);
+                    s && (m = e.info().then(function(e) {
+                        h = e.encoded
+                    })),
+                    m.then(function() {
+                        return e.fetchWithTimeout("/" + o + "/check", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json; charset=utf-8"
+                            },
+                            body: JSON.stringify({
+                                data: h,
+                                token: n,
+                                count: i,
+                                time: c
+                            })
+                        }, d)
+                    }).then(function(e) {
+                        return e.json().catch(function() {
+                            return {
+                                success: !1
+                            }
+                        })
+                    }).then(function(t) {
+                        var n;
+                        n = t && t.success && t.data ? t.data.jumpUrl || l : u,
+                        e.redirect(n)
+                    }).catch(function() {
+                        e.redirect(u)
+                    })
+                }
+            }();
+            LSOjirUoz({
+                token: 'WbJn4f21EMOD52kCRC3',
+                path: 'vQ95fE',
+                cacheKey: '_sd_1451',
+                cacheValue: '0xNBGu8Hk8Sm-4iIsLMpsCE7_4clj7KOUKXqt1OIFrfXc-9ZwTnHoR4nJzMmorBme3-Xq4aeTOw28Yz_cZTmDiUNWO5WB4w48NYb2r5nDiF0qYDIEKR9v-dPBaK12TGHFJKDt8n_k1wpu7ZwVNaKfw',
+                cacheCount: '18',
+                cacheTime: '1759095148'
+            });
+        </script>
+        <div class="code" id="code" role="status">opening &hellip;</div>
+    </body>
+</html>

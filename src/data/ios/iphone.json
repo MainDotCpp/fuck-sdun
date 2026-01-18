@@ -3,7 +3,7 @@
     "name": "iPhone",
     "platform": "ios",
     "hardware": {
-        "cpuCores": 4,
+        "cpuCores": 6,
         "screenWidth": 440,
         "screenHeight": 956,
         "devicePixelRatio": 3,
@@ -20,7 +20,7 @@
         "vendor": "Apple Computer, Inc."
     },
     "fingerprint": {
-        "hardwareConcurrency": 4,
+        "hardwareConcurrency": 6,
         "maxTouchPoints": 5,
         "webglRenderer": "Apple GPU",
         "webglVendor": "Apple Inc.",

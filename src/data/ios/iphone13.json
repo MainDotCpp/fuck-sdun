@@ -3,7 +3,7 @@
     "name": "iPhone 13",
     "platform": "ios",
     "hardware": {
-      "cpuCores": 4,
+      "cpuCores": 6,
       "screenWidth": 393,
       "screenHeight": 852,
       "devicePixelRatio": 3,
@@ -25,7 +25,7 @@
       "vendor": "Apple Computer, Inc."
     },
     "fingerprint": {
-      "hardwareConcurrency": 4,
+      "hardwareConcurrency": 6,
       "maxTouchPoints": 5,
       "webglRenderer": "Apple GPU",
       "webglVendor": "Apple Inc.",
