@@ -71,7 +71,12 @@ export const PROXY_GROUPS: Record<string, {
   },
   'canada-facebook': {
     fixedProxy: 'ea.proxys5.net:6200:30356354-zone-custom-region-CA:nRNz4Tsx', 
-    languages: ['en-CA', 'en-US', 'en', 'fr-CA', 'fr'],
+    // 目标受众：加拿大的台湾人。提供多种复合型语言组合以提高仿真度
+    languages: [
+      'zh-TW,zh;q=0.9,en-CA;q=0.8,en-US;q=0.7', // 1. 繁体核心型：中文首选，英文回退
+      'zh-TW,en-CA;q=0.9',                      // 3. 移动端常用：中文+加英
+      'zh-TW',
+    ],
   }
 };
 
