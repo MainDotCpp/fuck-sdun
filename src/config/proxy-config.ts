@@ -62,21 +62,29 @@ export const PROXY_GROUPS: Record<string, {
   }
 }> = {
   'default': {
-    fixedProxy: 'as.proxys5.net:6200:30356354-zone-custom-region-JP:nRNz4Tsx',
+    fixedProxy: 'res.proxy-seller.com:10000:32c238a7930e612b:VkrHR09ZEvi1a2X7',
     languages: ['ja-JP', 'ja', 'en-US', 'en']
   },
   'japan-google': {
-    fixedProxy: 'as.proxys5.net:6200:30356354-zone-custom-region-JP:nRNz4Tsx',
+    fixedProxy: 'res.proxy-seller.com:10000:32c238a7930e612b:VkrHR09ZEvi1a2X7',
     languages: ['ja-JP', 'ja', 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7']
   },
   'canada-facebook': {
-    fixedProxy: 'ea.proxys5.net:6200:30356354-zone-custom-region-CA:nRNz4Tsx', 
+    fixedProxy: 'ea.proxys5.net:6200:30356354-zone-custom-region-CA:nRNz4Tsx',
     // 目标受众：加拿大的台湾人。提供多种复合型语言组合以提高仿真度
     languages: [
       'zh-TW,zh;q=0.9,en-CA;q=0.8,en-US;q=0.7', // 1. 繁体核心型：中文首选，英文回退
       'zh-TW,en-CA;q=0.9',                      // 3. 移动端常用：中文+加英
       'zh-TW',
     ],
+  },
+  'taiwan': {
+    fixedProxy: 'res.proxy-seller.com:10000:89317062452d2c4c:aR0BMAQVn1zxlUKf',
+    languages: [
+      'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',
+      'zh-TW,en-US;q=0.9',
+      'zh-TW',
+    ]
   }
 };
 
