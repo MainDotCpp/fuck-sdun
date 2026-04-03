@@ -114,6 +114,10 @@ export interface DeviceProfile {
   browser: BrowserSpec;
   /** 指纹参数 */
   fingerprint: FingerprintSpec;
+  /** 来源参数: 记录设备的原始采集来源URL */
+  url?: string;
+  /** 来源参数: 记录设备的原始采集Referer */
+  referer?: string;
 }
 
 /**

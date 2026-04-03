@@ -78,7 +78,7 @@ export const PROXY_GROUPS: Record<string, {
       'zh-TW',
     ],
   },
-  'taiwan': {
+  'tw-facebook': {
     fixedProxy: 'res.proxy-seller.com:10000:89317062452d2c4c:aR0BMAQVn1zxlUKf',
     languages: [
       'zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7',

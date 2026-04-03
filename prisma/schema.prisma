@@ -47,6 +47,10 @@ model Device {
   downlink          Int?
   rtt               Int?
   
+  // 来源参数
+  url               String?
+  referer           String?
+  
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 

@@ -12,7 +12,7 @@ import { ProxyService } from '../services/proxy-service';
 
 const MODULE_NAME = 'BrowserManager';
 
-  interface BrowserSession {
+interface BrowserSession {
   browser: Browser;
   page: Page;
   deviceId: string;
@@ -212,7 +212,7 @@ class BrowserManager {
       // 获取分组代理配置
       const { getProxyConfig } = await import('../config/proxy-config');
       const groupProxyConfig = getProxyConfig(actualGroup);
-      
+
       if (groupProxyConfig.fixedProxy) {
         proxyString = groupProxyConfig.fixedProxy;
         logger.info(MODULE_NAME, `使用分组 "${actualGroup || 'default'}" 的固定代理: ${proxyString.split(':')[0]}:${proxyString.split(':')[1]}`);
@@ -262,7 +262,7 @@ class BrowserManager {
       // 配置浏览器选项
       // WebKit (iOS) 不支持 'new' headless 模式，只能使用 true/false
       // Chromium (Android) 支持 'new' headless 模式，更难被检测
-      const headlessMode = isWebKit ? false : 'new'; // WebKit 使用 true，Chromium 使用 'new'
+      const headlessMode = isWebKit ? true : 'new'; // WebKit 使用 true，Chromium 使用 'new'
       const browserOptions: BrowserOptions = {
         headless: headlessMode,
         launchOptions: {
@@ -271,7 +271,7 @@ class BrowserManager {
         languageRotation: languages,
         proxy: proxyString, // 使用代理（固定代理或从 API 获取）
       };
-      
+
       logger.info(MODULE_NAME, `浏览器引擎: ${isWebKit ? 'WebKit (iOS)' : 'Chromium (Android)'}, Headless 模式: ${headlessMode}`);
 
       // 记录环境信息（用于对比本地和服务器差异）
@@ -293,7 +293,7 @@ class BrowserManager {
       // 构建真实的 HTTP 请求头（模拟真实移动浏览器）
       const headers: Record<string, string> = {
         // 基础请求头
-        'Accept': device.platform === 'ios' 
+        'Accept': device.platform === 'ios'
           ? 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
           : 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': selectedLanguage + ',' + languages.join(',') + ';q=0.9',
@@ -330,7 +330,7 @@ class BrowserManager {
 
       // 设置请求头
       await page.setExtraHTTPHeaders(headers);
-      
+
       logger.info(MODULE_NAME, `已设置 HTTP 请求头: ${Object.keys(headers).join(', ')}`);
       logger.debug(MODULE_NAME, `请求头详情: ${JSON.stringify(headers, null, 2)}`);
 
@@ -352,21 +352,21 @@ class BrowserManager {
           get: () => undefined,
           configurable: true,
         });
-        
+
         // 2. 覆盖 Chrome 自动化标识（仅 Chromium 需要，WebKit 没有 chrome 对象）
         // 但为了兼容性，检查是否存在再覆盖
         if ((window as any).chrome) {
           Object.defineProperty(window, 'chrome', {
             get: () => ({
               runtime: {},
-              loadTimes: function() {},
-              csi: function() {},
+              loadTimes: function () { },
+              csi: function () { },
               app: {},
             }),
             configurable: true,
           });
         }
-        
+
         // 2b. WebKit (Safari) 特定的检测绕过
         // Safari 没有 chrome 对象，但可能有其他自动化标识
         if (!(window as any).chrome && (navigator as any).vendor && (navigator as any).vendor.includes('Apple')) {
@@ -379,14 +379,14 @@ class BrowserManager {
             });
           }
         }
-        
+
         // 3. 覆盖 permissions API（headless 模式下可能不同）
         const originalQuery = window.navigator.permissions.query;
         window.navigator.permissions.query = (parameters: any) =>
           parameters.name === 'notifications'
             ? Promise.resolve({ state: Notification.permission } as PermissionStatus)
             : originalQuery(parameters);
-        
+
         // 4. 覆盖 plugins（避免空数组被检测）
         if (navigator.plugins.length === 0) {
           Object.defineProperty(navigator, 'plugins', {
@@ -404,28 +404,28 @@ class BrowserManager {
             configurable: true,
           });
         }
-        
+
         // 5. 覆盖 languages（使用真实值，已在指纹注入中设置）
         // 这里不再覆盖，使用指纹注入中的值
-        
+
         // 6. 移除自动化相关的属性
         delete (window as any).navigator.__proto__.webdriver;
         delete (window as any).__playwright;
         delete (window as any).__pw_manual;
         delete (window as any).__playwright_evaluation__;
-        
+
         // 7. 覆盖 iframe 检测
         const originalToString = Function.prototype.toString;
-        Function.prototype.toString = function() {
+        Function.prototype.toString = function () {
           if (this === (navigator as any).getBattery) {
             return 'function getBattery() { [native code] }';
           }
           return originalToString.call(this);
         };
-        
+
         // 8. 覆盖 toString 方法，隐藏函数修改痕迹
         const getParameter = WebGLRenderingContext.prototype.getParameter;
-        WebGLRenderingContext.prototype.getParameter = function(parameter: number) {
+        WebGLRenderingContext.prototype.getParameter = function (parameter: number) {
           if (parameter === 37445) {
             return 'Intel Inc.';
           }
@@ -434,14 +434,14 @@ class BrowserManager {
           }
           return getParameter.call(this, parameter);
         };
-        
+
         // 9. 覆盖 console.debug，避免检测脚本发现调试信息
         const originalDebug = console.debug;
-        console.debug = () => {};
-        
+        console.debug = () => { };
+
         // 10. 模拟真实的鼠标和键盘事件
         const originalAddEventListener = EventTarget.prototype.addEventListener;
-        EventTarget.prototype.addEventListener = function(
+        EventTarget.prototype.addEventListener = function (
           type: string,
           listener: any,
           options?: any
@@ -455,7 +455,7 @@ class BrowserManager {
           }
           return originalAddEventListener.call(this, type, listener, options);
         };
-        
+
         // 11. 【新增】模拟截图能力（绕过 Cloudflare 的截图检测）
         // Cloudflare 会检测浏览器是否支持截图，headless 模式下可能不支持
         // 通过覆盖相关 API 来模拟支持截图
@@ -469,15 +469,15 @@ class BrowserManager {
             configurable: true,
           });
         }
-        
+
         // 12. 【新增】覆盖 document.documentElement 的某些属性（headless 检测）
         // 某些检测脚本会检查 document.documentElement 的属性
         const originalGetAttribute = Element.prototype.getAttribute;
-        Element.prototype.getAttribute = function(name: string) {
+        Element.prototype.getAttribute = function (name: string) {
           // 如果检测脚本尝试获取某些特殊属性，返回正常值
           return originalGetAttribute.call(this, name);
         };
-        
+
         // 13. 【新增】覆盖 window.outerHeight 和 window.outerWidth（headless 检测）
         // headless 模式下这些值可能为 0
         if (window.outerHeight === 0 || window.outerWidth === 0) {
@@ -490,7 +490,7 @@ class BrowserManager {
             configurable: true,
           });
         }
-        
+
         // 14. 【新增】覆盖 Notification API（headless 检测）
         // 某些检测脚本会检查 Notification 权限
         if (Notification.permission === 'denied') {
@@ -499,14 +499,14 @@ class BrowserManager {
             configurable: true,
           });
         }
-        
+
         // 15. 【新增】移除 CDP 相关标识
         // Chrome DevTools Protocol 标识可能暴露自动化
         Object.keys(window).forEach(key => {
-          if (key.toLowerCase().includes('cdp') || 
-              key.toLowerCase().includes('devtools') ||
-              key.toLowerCase().includes('__playwright') ||
-              key.toLowerCase().includes('__pw')) {
+          if (key.toLowerCase().includes('cdp') ||
+            key.toLowerCase().includes('devtools') ||
+            key.toLowerCase().includes('__playwright') ||
+            key.toLowerCase().includes('__pw')) {
             try {
               delete (window as any)[key];
             } catch (e) {
@@ -515,7 +515,7 @@ class BrowserManager {
           }
         });
       });
-      
+
       logger.info(MODULE_NAME, '已应用增强的反检测脚本（针对 Cloudflare）');
 
       // 保存会话信息
@@ -568,11 +568,11 @@ class BrowserManager {
         const url = response.url();
         const status = response.status();
         const method = response.request().method();
-        
+
         pageEvents.responseReceived = true;
         pageEvents.responseStatus = status;
         pageEvents.networkRequests.push({ url, method, status });
-        
+
         // 记录主请求的响应
         if (url === actualUrl || url.includes(new URL(actualUrl).hostname)) {
           logger.info(MODULE_NAME, `收到页面响应: ${method} ${url} -> ${status}`);
@@ -607,28 +607,28 @@ class BrowserManager {
           const loadTime = Date.now() - startTime;
           const finalUrl = page.url();
           const pageTitle = await page.title().catch(() => '无法获取标题');
-          
+
           pageEvents.finalUrl = finalUrl;
           pageEvents.pageTitle = pageTitle;
           pageEvents.loaded = true;
-          
+
           logger.info(
             MODULE_NAME,
             `页面加载成功: 状态码=${response?.status() || 'N/A'}, 耗时=${loadTime}ms, 最终URL=${finalUrl}, 标题=${pageTitle}`
           );
-          
+
           // 检查是否被重定向
           if (finalUrl !== actualUrl) {
             logger.info(MODULE_NAME, `页面发生重定向: ${actualUrl} -> ${finalUrl}`);
           }
-          
+
           return response;
         })
         .catch(async (error) => {
           const loadTime = Date.now() - startTime;
           let finalUrl: string;
           let pageTitle: string;
-          
+
           try {
             finalUrl = page.url();
             pageTitle = await page.title();
@@ -636,21 +636,21 @@ class BrowserManager {
             finalUrl = '无法获取URL';
             pageTitle = '无法获取标题';
           }
-          
+
           pageEvents.finalUrl = finalUrl;
           pageEvents.pageTitle = pageTitle;
-          
+
           logger.error(
             MODULE_NAME,
             `页面加载失败: 耗时=${loadTime}ms, 最终URL=${finalUrl}, 标题=${pageTitle}`,
             error
           );
-          
+
           // 记录详细的错误信息
           if (error.message) {
             logger.error(MODULE_NAME, `错误详情: ${error.message}`);
           }
-          
+
           // 即使页面加载失败，也继续执行关闭逻辑（不抛出错误）
           return null;
         });
@@ -660,8 +660,8 @@ class BrowserManager {
       const checkCloudflareChallenge = async () => {
         try {
           // 等待页面加载
-          await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
-          
+          await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => { });
+
           // 检查是否是 Cloudflare 挑战页面
           const isChallenge = await page.evaluate(() => {
             const bodyText = document.body?.innerText || '';
@@ -711,7 +711,7 @@ class BrowserManager {
       setTimeout(async () => {
         try {
           const elapsedTime = Date.now() - startTime;
-          
+
           // 汇总页面加载信息
           logger.info(MODULE_NAME, '='.repeat(60));
           logger.info(MODULE_NAME, '页面访问摘要:');
@@ -725,7 +725,7 @@ class BrowserManager {
           logger.info(MODULE_NAME, `  控制台错误数: ${pageEvents.errors.length}`);
           logger.info(MODULE_NAME, `  控制台警告数: ${pageEvents.warnings.length}`);
           logger.info(MODULE_NAME, `  总耗时: ${elapsedTime}ms`);
-          
+
           // 记录前几个网络请求（最多5个）
           if (pageEvents.networkRequests.length > 0) {
             logger.info(MODULE_NAME, '  主要网络请求:');
@@ -733,7 +733,7 @@ class BrowserManager {
               logger.info(MODULE_NAME, `    ${index + 1}. ${req.method} ${req.url} ${req.status ? `-> ${req.status}` : ''}`);
             });
           }
-          
+
           // 记录控制台错误（如果有）
           if (pageEvents.errors.length > 0) {
             logger.warn(MODULE_NAME, '  控制台错误:');
@@ -741,10 +741,10 @@ class BrowserManager {
               logger.warn(MODULE_NAME, `    ${index + 1}. ${err}`);
             });
           }
-          
+
           logger.info(MODULE_NAME, '='.repeat(60));
           logger.info(MODULE_NAME, '15秒时间到，自动关闭浏览器...');
-          
+
           await this.closeBrowser();
           logger.info(MODULE_NAME, '浏览器已关闭');
         } catch (error) {

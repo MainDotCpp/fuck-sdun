@@ -1,7 +1,7 @@
-serverAddr = "45.78.61.23"
+serverAddr = "141.164.43.115"
 serverPort = 7000
 auth.method = "token"
-auth.token = "12345678"
+auth.token = "123123"
 
 [[proxies]]
 name = "操翻圣盾"
